@@ -7,5 +7,5 @@ redirect_from:
   - /about/
   - /about.html
 ---
-This is Kangjie's home on the web!
+This is Kangjie's homepage.
 
