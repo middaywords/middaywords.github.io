@@ -12,6 +12,7 @@ redirect_from:
 Education
 ======
 * B.S. in Computer Science, SJTU, 2016-2020
+* Summer School Program, University of Washington, 2018
 
 Publications
 ======
