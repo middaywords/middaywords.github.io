@@ -8,6 +8,11 @@ redirect_from:
 ---
 
 {% include base_path %}
+Experience
+======
+* Intern at Networking Research Group, MSRA, from Jan. 2020 to present.
+* Research Assistant at Advanced Network Laboratory(ANL), Shanghai Jiao Tong University, from Mar. 2019 to present.
+* Reaserch Assistant at Lab of Cryptology and Computer Security, Shanghai Jiao Tong University, from Oct. 2018 to Jan. 2019.
 
 Education
 ======
@@ -24,6 +29,6 @@ Publications
 
 Scholarships
 ======
-* SCSK Corporation(Japan) Scholarship， 2019
+* SCSK Corporation(Japan) Scholarship, 2019
 * Tung OOCL Scholarship, 2017
 
