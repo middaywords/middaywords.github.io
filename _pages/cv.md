@@ -16,6 +16,7 @@ Experience
 
 Education
 ======
+* M.S. in Computer Science, SJTU, 2020-present
 * B.S. in Computer Science, SJTU, 2016-2020
 * Summer School Program, University of Washington, 2018
 
