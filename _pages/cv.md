@@ -28,6 +28,6 @@ Publications
 
 Scholarships
 ======
-* SCSK Corporation(Japan) Scholarship, 2019
-* Tung OOCL Scholarship, 2017
+* SCSK Corporation(Japan) Scholarship, 2019 (top 15%)
+* Tung OOCL Scholarship, 2017 (top 5%)
 
