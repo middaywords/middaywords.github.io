@@ -119,3 +119,99 @@ void test1()
 
 
 
+#### Observer
+
+observer.hpp
+
+```cpp
+#include <map>
+#include <memory>
+
+class NonCopyable
+{
+protected:
+    NonCopyable() = default;
+    ~NonCopyable() = default;
+    NonCopyable(const NonCopyable&) = delete;
+    NonCopyable& operator=(const NonCopyable&) = delete;
+};
+
+template<typename Func>
+class Events : NonCopyable
+{
+private:
+    int _observerId = 0;
+    std::map<int, Func> _connections;
+
+    template<typename F>
+    int Assign(F&& f) {
+        int k = _observerId++;
+        _connections.emplace(k, std::forward<F>(f));
+
+        return k;
+    }
+
+public:
+    Events() {}
+    ~Events() {}
+    
+    // Register observer
+    int Connect(Func&& f) {
+        return Assign(f);
+    }
+
+    int Connect(const Func& f) {
+        return Assign(f);
+    }
+    
+    void Disconnect(int key) {
+        _connections.erase(key);
+    }
+
+    template<typename... Args>
+    void Notify(Args&... args) {
+        for (auto& it : _connections) {
+            it.second(std::forward<Args>(args)...);
+        }
+    }
+};
+```
+
+test.cpp 
+
+```cpp
+
+struct stA
+{
+    int a, b;
+    void print(int a, int b) { cout << a << ", " << b << endl; }
+};
+
+void print(int a, int b) { cout << a << ", " << b << endl; }
+
+void test2() {
+    Events<std::function<void(int, int)>> myEvent;
+
+    auto key = myEvent.Connect(print);
+    stA t;
+    auto lambdaKey = myEvent.Connect(
+        [&t](int a, int b){ 
+            t.a = a; 
+            t.b = b; 
+        }
+    );
+  
+  	// 其实一般不太想用bind，直接用个lambda对它进行封装就好了
+    std::function<void(int, int)> f = std::bind(&stA::print, &t, std::placeholders::_1, std::placeholders::_2);
+    auto val3 = myEvent.Connect(f);
+    int a = 1, b= 2;
+
+    myEvent.Notify(a, b);
+
+    myEvent.Disconnect(key);
+    cout << endl;
+
+    myEvent.Notify(a, b);
+}
+```
+
