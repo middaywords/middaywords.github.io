@@ -9,6 +9,8 @@ typora-root-url: ../../middaywords.github.io
 
 ### Design Pattern
 
+---
+
 #### singleton 
 
 singleton.hpp
@@ -30,6 +32,7 @@ private:
     Singleton &operator=(const Singleton &);
 
 public:
+  	// 利用可变参数，消除重载
     template <typename... Args>
     static T* Instance(Args &&...args);
 
@@ -119,6 +122,8 @@ void test1()
 
 
 
+---
+
 #### Observer
 
 observer.hpp
@@ -136,7 +141,10 @@ protected:
     NonCopyable& operator=(const NonCopyable&) = delete;
 };
 
-template<typename Func>
+// 不需要多定义一个基类来抽象Observer，易于绑定
+// NonCopyable使得其不可复制
+// 其实一个Events类只能对应一种函数
+template<typename Func> 
 class Events : NonCopyable
 {
 private:
@@ -167,7 +175,7 @@ public:
     void Disconnect(int key) {
         _connections.erase(key);
     }
-
+  
     template<typename... Args>
     void Notify(Args&... args) {
         for (auto& it : _connections) {
@@ -212,6 +220,196 @@ void test2() {
     cout << endl;
 
     myEvent.Notify(a, b);
+}
+```
+
+
+
+---
+
+#### visitor
+
+visitor.hpp
+
+```cpp
+#include <iostream>
+#include <memory>
+using namespace std;
+
+struct ConcreteElement1;
+struct ConcreteElement2;
+
+struct Visitor
+{
+    virtual ~Visitor() {}
+    virtual void Visit(ConcreteElement1 *element) = 0;
+    virtual void Visit(ConcreteElement2 *element) = 0;
+};
+
+struct Element
+{
+    virtual ~Element() {}
+    virtual void Accept(Visitor &visitor) = 0;
+};
+
+struct ConcreteVisitor : public Visitor
+{
+    void Visit(ConcreteElement1 *elemet)
+    {
+        cout << "Visit ConcreteElemen1" << endl;
+    }
+    void Visit(ConcreteElement2 *elemet)
+    {
+        cout << "Visit ConcreteElemen2" << endl;
+    }
+};
+
+struct ConcreteElement1 : public Element
+{
+    void Accept(Visitor &visitor)
+    {
+        visitor.Visit(this);
+    }
+};
+
+struct ConcreteElement2 : public Element
+{
+    void Accept(Visitor &visitor)
+    {
+        visitor.Visit(this);
+    }
+};
+```
+
+Test.cpp
+
+```cpp
+#include "visitor.hpp"
+
+void TestVisitor()
+{
+    ConcreteVisitor v;
+    std::unique_ptr<Element> emt1(new ConcreteElement1());
+    std::unique_ptr<Element> emt2(new ConcreteElement2());
+
+    emt1->Accept(v);
+    emt2->Accept(v);
+}
+```
+
+这样实现的缺点是当需要加入新访问者的时候，需要在基类中再加入一个纯虚函数。
+
+
+
+---
+
+#### object pool
+
+object_pool.hpp
+
+```cpp
+#include <string>
+#include <functional>
+#include <memory>
+#include <map>
+
+using namespace std;
+
+const int MaxObjectNum = 10;
+
+class NonCopyable
+{
+protected:
+    NonCopyable() = default;
+    ~NonCopyable() = default;
+    NonCopyable(const NonCopyable &) = delete;
+    NonCopyable &operator=(const NonCopyable &) = delete;
+};
+
+template <typename T>
+class ObjectPool : NonCopyable
+{
+    template <typename... Args>
+    using Constructor = std::function<std::shared_ptr<T>(Args...)>;
+
+private:
+    std::multimap<string, std::shared_ptr<T>> _objectMap;
+
+public:
+    //! \param num: Create `num` objects
+    template <typename... Args>
+    void Init(size_t num, Args &&...args);
+
+    template <typename... Args>
+    shared_ptr<T> GetObject();
+};
+
+template <typename T>
+template <typename... Args>
+void ObjectPool<T>::Init(size_t num, Args &&...args)
+{
+    if (num <= 0 || num > MaxObjectNum)
+    {
+        throw new std::logic_error("object num is out of range");
+    }
+    // 对于不同构造函数的对象池化
+    auto constructName = typeid(Constructor<Args...>).name();
+    for (size_t i = 0; i < num; i++)
+    {
+        _objectMap.emplace(constructName, shared_ptr<T>(
+                                              new T(std::forward<Args>(args)...),
+                                              [this, constructName](T *p) {
+                                                  // 定义删除时，不直接删除对向，而是回收到对象池，以供下次使用
+                                                  _objectMap.emplace(std::move(constructName), std::shared_ptr<T>(p));
+                                              }));
+    }
+}
+
+template <typename T>
+template <typename... Args>
+std::shared_ptr<T> ObjectPool<T>::GetObject()
+{
+    string constructName = typeid(Constructor<Args...>).name();
+
+    auto range = _objectMap.equal_range(constructName);
+    for (auto it = range.first; it != range.second; ++it)
+    {
+        auto ptr = it->second;
+        _objectMap.erase(it);
+        return ptr;
+    }
+
+    return nullptr;
+}
+
+```
+
+Test.cpp
+
+```cpp
+
+void TestObjectPool() {
+    ObjectPool<BigObject> pool;
+    pool.Init(2);
+    {
+        auto p = pool.GetObject();
+        Print(p, "p");
+        auto p2 = pool.GetObject();
+        Print(p2, "p2");
+    }
+    // 回收后可重新获取
+    auto p = pool.GetObject();
+    auto p2 = pool.GetObject();
+    Print(p, "p");
+    Print(p2, "p2");
+
+    // 支持重载函数构造的对象
+    pool.Init(2, 1);
+    auto p4 = pool.GetObject<int>();
+    Print(p4, "p4");
+    pool.Init(2, 1, 2);
+    auto p5 = pool.GetObject<int, int>();
+    Print(p5, "p5");
 }
 ```
 
