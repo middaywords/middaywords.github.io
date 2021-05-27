@@ -1,5 +1,5 @@
 ---
-title: notes for GoogCc in WebRTC 
+title: notes for googcc in webrtc 
 date: 2020-11-02
 permalink: /posts/2020/11/gcc-webrtc/
 tags:

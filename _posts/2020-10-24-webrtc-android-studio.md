@@ -1,5 +1,5 @@
 ---
-title: Setup WebRTC android app in Android Studio
+title: setup webrtc android app in android studio
 date: 2020-10-24
 permalink: /posts/2020/10/android-webrtc/
 tags:

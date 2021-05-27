@@ -1,5 +1,5 @@
 ---
-title: Cpp design pattern
+title: cpp design pattern
 date: 2021-04-11
 permalink: /posts/2021/04/designpattern/
 tags:
