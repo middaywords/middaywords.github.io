@@ -6,15 +6,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="HandheldFriendly" content="True">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-    <meta name="description" content="bpf_sock_opslist of sock_ops:  BPF_SOCK_OPS_TIMEOUT_INIT  related definitions:  123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646">
+    <meta name="description" content="bpf_struct_opsstruct_ops !&#x3D; sock_ops tcp_ca PR link:  list of sock_ops:  BPF_SOCK_OPS_TIMEOUT_INIT  related definitions:  1234567891011121314151617181920212223242526272829303132333435363738394041">
 <meta property="og:type" content="article">
-<meta property="og:title" content="bpf sock ops">
+<meta property="og:title" content="bpf struct ops">
 <meta property="og:url" content="https://middaywords.github.io/2023/08/24/bpf-sock-ops/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
-<meta property="og:description" content="bpf_sock_opslist of sock_ops:  BPF_SOCK_OPS_TIMEOUT_INIT  related definitions:  123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646">
+<meta property="og:description" content="bpf_struct_opsstruct_ops !&#x3D; sock_ops tcp_ca PR link:  list of sock_ops:  BPF_SOCK_OPS_TIMEOUT_INIT  related definitions:  1234567891011121314151617181920212223242526272829303132333435363738394041">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-08-24T02:49:35.000Z">
-<meta property="article:modified_time" content="2023-08-24T02:58:08.518Z">
+<meta property="article:modified_time" content="2023-08-27T04:02:17.206Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="bpf">
 <meta name="twitter:card" content="summary">
@@ -37,7 +37,7 @@
       
     
     <!-- title -->
-    <title>bpf sock ops</title>
+    <title>bpf struct ops</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -99,23 +99,23 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&text=bpf sock ops"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&is_video=false&description=bpf sock ops"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=bpf sock ops&body=Check out this article: https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&name=bpf sock ops&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&t=bpf sock ops"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&text=bpf struct ops"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&is_video=false&description=bpf struct ops"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=bpf struct ops&body=Check out this article: https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&name=bpf struct ops&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&t=bpf struct ops"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
     
     
       <div id="toc">
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-sock-ops"><span class="toc-number">1.</span> <span class="toc-text">bpf_sock_ops</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-struct-ops"><span class="toc-number">1.</span> <span class="toc-text">bpf_struct_ops</span></a></li></ol>
       </div>
     
   </span>
@@ -128,7 +128,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        bpf sock ops
+        bpf struct ops
     </h1>
 
 
@@ -160,7 +160,9 @@
   
 
   <div class="content e-content" itemprop="articleBody">
-    <h2 id="bpf-sock-ops"><a href="#bpf-sock-ops" class="headerlink" title="bpf_sock_ops"></a>bpf_sock_ops</h2><p>list of sock_ops:</p>
+    <h2 id="bpf-struct-ops"><a href="#bpf-struct-ops" class="headerlink" title="bpf_struct_ops"></a>bpf_struct_ops</h2><p>struct_ops !&#x3D; sock_ops</p>
+<p>tcp_ca PR link: </p>
+<p>list of sock_ops:</p>
 <ul>
 <li>BPF_SOCK_OPS_TIMEOUT_INIT</li>
 </ul>
@@ -194,23 +196,23 @@
     
     
       <div id="toc-footer" style="display: none">
-        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-sock-ops"><span class="toc-number">1.</span> <span class="toc-text">bpf_sock_ops</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-struct-ops"><span class="toc-number">1.</span> <span class="toc-text">bpf_struct_ops</span></a></li></ol>
       </div>
     
 
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&text=bpf sock ops"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&is_video=false&description=bpf sock ops"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=bpf sock ops&body=Check out this article: https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf sock ops"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&name=bpf sock ops&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&t=bpf sock ops"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&text=bpf struct ops"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&is_video=false&description=bpf struct ops"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=bpf struct ops&body=Check out this article: https://middaywords.github.io/2023/08/24/bpf-sock-ops/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&title=bpf struct ops"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&name=bpf struct ops&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/bpf-sock-ops/&t=bpf struct ops"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
