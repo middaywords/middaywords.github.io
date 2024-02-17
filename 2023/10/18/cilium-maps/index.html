@@ -6,15 +6,15 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="HandheldFriendly" content="True">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
-    <meta name="description" content="cilium maps我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些 1234567891011root@host:&#x2F;home&#x2F;cilium# cilium map listName                     Num entries   Num errors   Cache enabledcilium_lxc">
+    <meta name="description" content="cilium mapscilium map list我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些 1234567891011root@host:&#x2F;home&#x2F;cilium# cilium map listName                     Num entries   Num errors   Cache enabledcilium">
 <meta property="og:type" content="article">
 <meta property="og:title" content="cilium maps">
 <meta property="og:url" content="https://middaywords.github.io/2023/10/18/cilium-maps/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
-<meta property="og:description" content="cilium maps我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些 1234567891011root@host:&#x2F;home&#x2F;cilium# cilium map listName                     Num entries   Num errors   Cache enabledcilium_lxc">
+<meta property="og:description" content="cilium mapscilium map list我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些 1234567891011root@host:&#x2F;home&#x2F;cilium# cilium map listName                     Num entries   Num errors   Cache enabledcilium">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2023-10-18T07:42:19.000Z">
-<meta property="article:modified_time" content="2023-10-19T00:07:13.010Z">
+<meta property="article:modified_time" content="2023-10-26T03:38:21.375Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="bpf">
 <meta property="article:tag" content="cilium">
@@ -57,6 +57,16 @@
     
 	<!-- mathjax -->
 	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
 <meta name="generator" content="Hexo 6.3.0"></head>
 
 <body class="max-width mx-auto px3 ltr">
@@ -82,6 +92,8 @@
     <br/>
     <span id="actions">
       <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/10/26/bpf-verifier-3/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
         <li><a class="icon" aria-label="Next post" href="/2023/10/08/virtio-interrupts/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
@@ -114,7 +126,7 @@
     
     
       <div id="toc">
-        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#cilium-maps"><span class="toc-number">1.</span> <span class="toc-text">cilium maps</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#cilium-maps"><span class="toc-number">1.</span> <span class="toc-text">cilium maps</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#cilium-map-list"><span class="toc-number">1.1.</span> <span class="toc-text">cilium map list</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#cilium-bpf-%E2%80%A6"><span class="toc-number">1.2.</span> <span class="toc-text">cilium bpf …</span></a></li></ol></li></ol>
       </div>
     
   </span>
@@ -159,7 +171,7 @@
   
 
   <div class="content e-content" itemprop="articleBody">
-    <h1 id="cilium-maps"><a href="#cilium-maps" class="headerlink" title="cilium maps"></a>cilium maps</h1><p>我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些</p>
+    <h1 id="cilium-maps"><a href="#cilium-maps" class="headerlink" title="cilium maps"></a>cilium maps</h1><h2 id="cilium-map-list"><a href="#cilium-map-list" class="headerlink" title="cilium map list"></a>cilium map list</h2><p>我们知道，cilium 有很多 map，可以通过 cilium map list 看到现在跑的有哪些</p>
 <figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">root@host:/home/cilium# cilium map list</span><br><span class="line">Name                     Num entries   Num errors   Cache enabled</span><br><span class="line">cilium_lxc               7             0            true</span><br><span class="line">cilium_ipcache           14            0            true</span><br><span class="line">cilium_lb4_services_v2   0             0            true</span><br><span class="line">cilium_lb4_backends_v3   0             0            true</span><br><span class="line">cilium_lb4_reverse_nat   0             0            true</span><br><span class="line">cilium_policy_00977      0             0            false</span><br><span class="line">cilium_node_map          0             0            false</span><br><span class="line">cilium_metrics           0             0            false</span><br><span class="line">cilium_world_cidrs4      0             0            false</span><br></pre></td></tr></table></figure>
 
 <p>我们也可以从 host 上看到</p>
@@ -175,6 +187,15 @@
 <p>request 在哪里处理呢？在 cilium-agent 里面处理</p>
 <figure class="highlight go"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// daemon/cmd/daemon_main.go</span></span><br><span class="line">	<span class="comment">// /map</span></span><br><span class="line">	restAPI.DaemonGetMapHandler = NewGetMapHandler(d)</span><br><span class="line">	restAPI.DaemonGetMapNameHandler = NewGetMapNameHandler(d)</span><br><span class="line">	restAPI.DaemonGetMapNameEventsHandler = NewGetMapNameEventsHandler(d, mapGetterImpl&#123;&#125;)</span><br></pre></td></tr></table></figure>
 
+<p>在 <code>NewGetMapHandler</code> 中，使用了一个 <code>mapRegister</code> 来存 cilium-agent 存储 mapname -&gt; Map 对象的映射，遍历 <code>mapRegister</code> 即可拿到所有的 cilium bpf map。</p>
+<p>可以看到 ping 住的 map 比 cilium map list 里面要多</p>
+<p>机器1：cilium1.14</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line">root@1000-worker2:/home/cilium# cilium map list</span><br><span class="line">Name                       Num entries   Num errors   Cache enabled</span><br><span class="line">cilium_lb4_services_v2     12            0            true</span><br><span class="line">cilium_lb4_source_range    0             0            true</span><br><span class="line">cilium_policy_03640        0             0            false</span><br><span class="line">cilium_runtime_config      0             0            false</span><br><span class="line">cilium_lxc                 0             0            true</span><br><span class="line">cilium_lb4_reverse_nat     12            0            true</span><br><span class="line">cilium_lb_affinity_match   0             0            true</span><br><span class="line">cilium_lb4_affinity        0             0            false</span><br><span class="line">cilium_ipcache             9             0            true</span><br><span class="line">cilium_lb4_backends_v3     0             0            true</span><br><span class="line">cilium_l2_responder_v4     0             0            false</span><br><span class="line">cilium_auth_map            0             0            false</span><br><span class="line">cilium_node_map            0             0            false</span><br><span class="line">cilium_metrics             0             0            false</span><br><span class="line">cilium_world_cidrs4        0             0            false</span><br><span class="line"><span class="meta prompt_"># </span><span class="language-bash">只有两个目录里面有内容</span></span><br><span class="line">root@1000-worker2:/home/cilium# ls /sys/fs/bpf/tc/globals/</span><br><span class="line">cilium_auth_map            cilium_ct4_global           cilium_lb4_affinity       cilium_lxc              cilium_snat_v4_external</span><br><span class="line">cilium_call_policy         cilium_ct_any4_global       cilium_lb4_backends_v3    cilium_metrics          cilium_tunnel_map</span><br><span class="line">cilium_calls_hostns_03640  cilium_encrypt_state        cilium_lb4_reverse_nat    cilium_node_map         cilium_world_cidrs4</span><br><span class="line">cilium_calls_netdev_00002  cilium_events               cilium_lb4_reverse_sk     cilium_nodeport_neigh4</span><br><span class="line">cilium_calls_netdev_00030  cilium_ipcache              cilium_lb4_services_v2    cilium_policy_03640</span><br><span class="line">cilium_calls_netdev_00346  cilium_ipv4_frag_datagrams  cilium_lb4_source_range   cilium_runtime_config</span><br><span class="line">cilium_calls_overlay_2     cilium_l2_responder_v4      cilium_lb_affinity_match  cilium_signals</span><br><span class="line">root@1000-worker2:/sys/fs/bpf# ls cilium/socketlb/links/cgroup/cil_sock</span><br><span class="line">cil_sock4_connect      cil_sock4_post_bind    cil_sock4_sendmsg      cil_sock6_getpeername  cil_sock6_recvmsg</span><br><span class="line">cil_sock4_getpeername  cil_sock4_recvmsg      cil_sock6_connect      cil_sock6_post_bind    cil_sock6_sendmsg</span><br></pre></td></tr></table></figure>
+
+<p>机器2: cilium 1.13</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line">root@1000-worker4:/home/cilium# cilium map list</span><br><span class="line">Name                     Num entries   Num errors   Cache enabled</span><br><span class="line">cilium_ipcache           13            0            true</span><br><span class="line">cilium_lb4_services_v2   0             0            true</span><br><span class="line">cilium_lb4_backends_v3   0             0            true</span><br><span class="line">cilium_lb4_reverse_nat   0             0            true</span><br><span class="line">cilium_policy_03131      0             0            false</span><br><span class="line">cilium_lxc               6             0            true</span><br><span class="line">cilium_node_map          0             0            false</span><br><span class="line">cilium_metrics           0             0            false</span><br><span class="line">cilium_world_cidrs4      0             0            false</span><br><span class="line">root@1000-worker4:/sys/fs/bpf# tree</span><br><span class="line">.</span><br><span class="line">|-- ip -&gt; tc</span><br><span class="line">|-- sa -&gt; tc</span><br><span class="line">|-- sk -&gt; tc</span><br><span class="line">|-- tc</span><br><span class="line">|   `-- globals</span><br><span class="line">|       |-- cilium_call_policy</span><br><span class="line">|       |-- cilium_calls_hostns_03131</span><br><span class="line">|       |-- cilium_calls_netdev_00011</span><br><span class="line">|       |-- cilium_calls_netdev_00027</span><br><span class="line">|       |-- cilium_calls_overlay_2</span><br><span class="line">|       |-- cilium_ct4_global</span><br><span class="line">|       |-- cilium_ct_any4_global</span><br><span class="line">|       |-- cilium_encrypt_state</span><br><span class="line">|       |-- cilium_events</span><br><span class="line">|       |-- cilium_ipcache</span><br><span class="line">|       |-- cilium_ipv4_frag_datagrams</span><br><span class="line">|       |-- cilium_lb4_backends_v3</span><br><span class="line">|       |-- cilium_lb4_reverse_nat</span><br><span class="line">|       |-- cilium_lb4_services_v2</span><br><span class="line">|       |-- cilium_lxc</span><br><span class="line">|       |-- cilium_metrics</span><br><span class="line">|       |-- cilium_node_map</span><br><span class="line">|       |-- cilium_policy_03131</span><br><span class="line">|       |-- cilium_signals</span><br><span class="line">|       |-- cilium_tunnel_map</span><br><span class="line">|       `-- cilium_world_cidrs4</span><br><span class="line">`-- xdp -&gt; tc</span><br></pre></td></tr></table></figure>
+
+<h2 id="cilium-bpf-…"><a href="#cilium-bpf-…" class="headerlink" title="cilium bpf …"></a>cilium bpf …</h2><p>为什么上面可以看到，<code>/sys/fs/bpf</code> 下的内容比 cilium map list 的多呢？因为 cilium map list 是操作所有</p>
 
   </div>
 </article>
@@ -202,7 +223,7 @@
     
     
       <div id="toc-footer" style="display: none">
-        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#cilium-maps"><span class="toc-number">1.</span> <span class="toc-text">cilium maps</span></a></li></ol>
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#cilium-maps"><span class="toc-number">1.</span> <span class="toc-text">cilium maps</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#cilium-map-list"><span class="toc-number">1.1.</span> <span class="toc-text">cilium map list</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#cilium-bpf-%E2%80%A6"><span class="toc-number">1.2.</span> <span class="toc-text">cilium bpf …</span></a></li></ol></li></ol>
       </div>
     
 
@@ -241,7 +262,7 @@
     Copyright &copy;
     
     
-    2016-2023
+    2016-2024
     Kangjie Xu
   </div>
   <div class="footer-right">
