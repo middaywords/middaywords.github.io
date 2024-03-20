@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="[SIGCOMM17] Carousel: Scalable Traffic Shaping at End Hostsabstracttraffic shaping，即流量整形，在 data center 和 WAN 里都很常见，常见的应用包括 bandwidth allocation，基于 rate 的 congestion control，packet pacing 来防止突发传输(burst">
 <meta property="og:type" content="article">
-<meta property="og:title" content="paper-notes-carousel">
+<meta property="og:title" content="paper-notes carousel[sigcomm17]">
 <meta property="og:url" content="https://middaywords.github.io/2024/02/13/paper-notes-carousel/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
 <meta property="og:description" content="[SIGCOMM17] Carousel: Scalable Traffic Shaping at End Hostsabstracttraffic shaping，即流量整形，在 data center 和 WAN 里都很常见，常见的应用包括 bandwidth allocation，基于 rate 的 congestion control，packet pacing 来防止突发传输(burst">
@@ -20,7 +20,7 @@
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20240216100534955.png">
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20240217123913863.png">
 <meta property="article:published_time" content="2024-02-13T13:50:17.000Z">
-<meta property="article:modified_time" content="2024-02-17T04:54:43.136Z">
+<meta property="article:modified_time" content="2024-03-20T14:18:06.936Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:image" content="https://middaywords.github.io/figures/image-20240215105012414.png">
@@ -43,7 +43,7 @@
       
     
     <!-- title -->
-    <title>paper-notes-carousel</title>
+    <title>paper-notes carousel[sigcomm17]</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -98,6 +98,8 @@
     <span id="actions">
       <ul>
         
+        <li><a class="icon" aria-label="Previous post" href="/2024/02/21/paper-notes-iocost/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
         
         <li><a class="icon" aria-label="Next post" href="/2024/02/07/linux-tc-bpf-tbf/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
         
@@ -113,16 +115,16 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&text=paper-notes-carousel"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&is_video=false&description=paper-notes-carousel"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes-carousel&body=Check out this article: https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&name=paper-notes-carousel&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&t=paper-notes-carousel"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&text=paper-notes carousel[sigcomm17]"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&is_video=false&description=paper-notes carousel[sigcomm17]"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes carousel[sigcomm17]&body=Check out this article: https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&name=paper-notes carousel[sigcomm17]&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&t=paper-notes carousel[sigcomm17]"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -142,7 +144,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        paper-notes-carousel
+        paper-notes carousel[sigcomm17]
     </h1>
 
 
@@ -277,16 +279,16 @@
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&text=paper-notes-carousel"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&is_video=false&description=paper-notes-carousel"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes-carousel&body=Check out this article: https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes-carousel"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&name=paper-notes-carousel&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&t=paper-notes-carousel"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&text=paper-notes carousel[sigcomm17]"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&is_video=false&description=paper-notes carousel[sigcomm17]"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes carousel[sigcomm17]&body=Check out this article: https://middaywords.github.io/2024/02/13/paper-notes-carousel/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&title=paper-notes carousel[sigcomm17]"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&name=paper-notes carousel[sigcomm17]&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/02/13/paper-notes-carousel/&t=paper-notes carousel[sigcomm17]"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
