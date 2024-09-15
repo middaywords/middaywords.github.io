@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="ovs 源码笔记 概览 dataplane： 以用户态的 ovs-vswitchd 和内核态的 datapath 为主的转发模块，以及与之相关联的数据库模块 ovsdb-server。 control plane: 由ovs-ofctl模块负责，基于OpenFlow协议与数据面进行交互。 management plane: 由 OVS 提供的各种工具来负责，这些工具的提供也是为了方便用户对底层各个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="ovs 源码笔记">
+<meta property="og:url" content="https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="ovs 源码笔记 概览 dataplane： 以用户态的 ovs-vswitchd 和内核态的 datapath 为主的转发模块，以及与之相关联的数据库模块 ovsdb-server。 control plane: 由ovs-ofctl模块负责，基于OpenFlow协议与数据面进行交互。 management plane: 由 OVS 提供的各种工具来负责，这些工具的提供也是为了方便用户对底层各个">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/v2-d24e15bc8f9855128f22a456d3e1c935_1440w.webp">
+<meta property="og:image" content="https://picx.zhimg.com/80/v2-eb3ab7d8cb98fbd180360f1f1f6b648f_1440w.webp">
+<meta property="og:image" content="https://pic4.zhimg.com/80/v2-472b1676cdc03278c2ab9d66b7c7fae5_1440w.webp">
+<meta property="article:published_time" content="2024-09-09T05:23:25.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.694Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="network">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/v2-d24e15bc8f9855128f22a456d3e1c935_1440w.webp">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>ovs 源码笔记</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/09/06/2024-0906-deployment-dctcp/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&text=ovs 源码笔记"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&is_video=false&description=ovs 源码笔记"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ovs 源码笔记&body=Check out this article: https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&name=ovs 源码笔记&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&t=ovs 源码笔记"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#ovs-%E6%BA%90%E7%A0%81%E7%AC%94%E8%AE%B0"><span class="toc-number">1.</span> <span class="toc-text">ovs 源码笔记</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%A7%88"><span class="toc-number">1.1.</span> <span class="toc-text">概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ovs-%E6%BA%90%E7%A0%81"><span class="toc-number">1.2.</span> <span class="toc-text">ovs 源码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#vswitchd-%E6%A8%A1%E5%9D%97"><span class="toc-number">1.2.1.</span> <span class="toc-text">vswitchd 模块</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Reference"><span class="toc-number">1.3.</span> <span class="toc-text">Reference</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        ovs 源码笔记
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-09-09T05:23:25.000Z" class="dt-published" itemprop="datePublished">2024-09-09</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="ovs-源码笔记"><a href="#ovs-源码笔记" class="headerlink" title="ovs 源码笔记"></a>ovs 源码笔记</h1><p><img src="/../figures/v2-d24e15bc8f9855128f22a456d3e1c935_1440w.webp" alt="img"></p>
+<h2 id="概览"><a href="#概览" class="headerlink" title="概览"></a>概览</h2><ul>
+<li>dataplane： 以用户态的 ovs-vswitchd 和内核态的 datapath 为主的转发模块，以及与之相关联的数据库模块 ovsdb-server。</li>
+<li>control plane: 由ovs-ofctl模块负责，基于OpenFlow协议与数据面进行交互。</li>
+<li>management plane: 由 OVS 提供的各种工具来负责，这些工具的提供也是为了方便用户对底层各个模块的控制管理，提高用户体验。</li>
+</ul>
+<p>主要组件：</p>
+<ul>
+<li>Ovs-switchd: 与内核 datapath 共同组成数据面，用 Openflow 协议与控制器通信，用 OVSDB 与 ovsdb-server 通信</li>
+<li>ovsdb-server: OVS 轻量级数据库服务，配置 OVS，包括接口，VLAN 等</li>
+<li>OpenFlow 控制器（OVN）通过 OpenFlow 协议连接到任何支持 OpenFlow 的交换机，通过向交换机下发 OpenFlow 规则，来控制数据流向</li>
+<li>Kernel datapath 内核模块和 ovs-vswitchd 相互写作，datapath 负责收发包，而ovs-vswitchd通过下发的流表规则指导datapath如何转发包。</li>
+<li>ovs-ofctl是控制面的模块，但本质上它也是一个管理工具，主要是基于OpenFlow协议对OpenFlow交换机进行监控和管理，通过它可以显示一个OpenFlow交换机的当前状态，包括功能、配置和表中的项。</li>
+<li><a target="_blank" rel="noopener" href="https://zhida.zhihu.com/search?q=ovs-dpctl&zhida_source=entity&is_preview=1">ovs-dpctl</a>用来配置交换机的内核模块datapath，它可以创建，修改和删除datapath，一般单个机器上的datapath有256条（0-255）。一条datapath对应一个虚拟网络设备。该工具还可以统计每条datapath上的设备通过的流量，打印流的信息等。</li>
+<li>ovs-appctl查询和控制运行中的OVS守护进程，包括ovs-switchd，datapath，OpenFlow控制器等，兼具ovs-ofctl、ovs-dpctl的功能，是一个非常强大的命令。ovs-vswitchd等进程启动之后就以一个<a target="_blank" rel="noopener" href="https://zhida.zhihu.com/search?q=%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B&zhida_source=entity&is_preview=1">守护进程</a>的形式运行，为了能够很好的让用户控制这些进程，就有了这个命令。</li>
+<li>ovs-appctl查询和控制运行中的OVS守护进程，包括ovs-switchd，datapath，OpenFlow控制器等，兼具ovs-ofctl、ovs-dpctl的功能，是一个非常强大的命令。ovs-vswitchd等进程启动之后就以一个<a target="_blank" rel="noopener" href="https://zhida.zhihu.com/search?q=%E5%AE%88%E6%8A%A4%E8%BF%9B%E7%A8%8B&zhida_source=entity&is_preview=1">守护进程</a>的形式运行，为了能够很好的让用户控制这些进程，就有了这个命令。</li>
+</ul>
+<h2 id="ovs-源码"><a href="#ovs-源码" class="headerlink" title="ovs 源码"></a>ovs 源码</h2><h3 id="vswitchd-模块"><a href="#vswitchd-模块" class="headerlink" title="vswitchd 模块"></a>vswitchd 模块</h3><p><img src="https://picx.zhimg.com/80/v2-eb3ab7d8cb98fbd180360f1f1f6b648f_1440w.webp" alt="img"></p>
+<p> 在ovs中交换机和桥是一个东西, ovs用两个数据结构描述它们: 交换机(ofproto)与桥(bridge)，它们在ovs中是一一对应的。bridge更贴近用户, ofproto跟底层联系更多。ovs用port和ofprot描述端口, 前者对应bridge, 而后者对应ofproto。ovs还有一个结构叫<a target="_blank" rel="noopener" href="https://zhida.zhihu.com/search?q=iface&zhida_source=entity&is_preview=1">iface</a>, 一般而言, 一个port包含一个iface, 但存在一种聚合(bond)的情况，此时port和iface就是一对多的关系了。</p>
+<p><img src="https://pic4.zhimg.com/80/v2-472b1676cdc03278c2ab9d66b7c7fae5_1440w.webp" alt="img"></p>
+<h2 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h2><p><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/637977332">https://zhuanlan.zhihu.com/p/637977332</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#ovs-%E6%BA%90%E7%A0%81%E7%AC%94%E8%AE%B0"><span class="toc-number">1.</span> <span class="toc-text">ovs 源码笔记</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#%E6%A6%82%E8%A7%88"><span class="toc-number">1.1.</span> <span class="toc-text">概览</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#ovs-%E6%BA%90%E7%A0%81"><span class="toc-number">1.2.</span> <span class="toc-text">ovs 源码</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#vswitchd-%E6%A8%A1%E5%9D%97"><span class="toc-number">1.2.1.</span> <span class="toc-text">vswitchd 模块</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Reference"><span class="toc-number">1.3.</span> <span class="toc-text">Reference</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&text=ovs 源码笔记"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&is_video=false&description=ovs 源码笔记"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=ovs 源码笔记&body=Check out this article: https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&title=ovs 源码笔记"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&name=ovs 源码笔记&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/09/09/2024-0909-ovs-source-code/&t=ovs 源码笔记"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

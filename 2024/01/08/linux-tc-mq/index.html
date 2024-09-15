@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="linux tc 系列(4) - mqKernel version: 5.15 tc multiqueueTc 中有 multiqueue，还有 mq，两个其实是不同的东西，关于 tc multiqueue，Documentation&#x2F;networking&#x2F;multiqueue.rst 有相关叙述。 简单来说，qdisc support for multiqueue device，一种是给每个 N">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux tc (4) - mq">
+<meta property="og:url" content="https://middaywords.github.io/2024/01/08/linux-tc-mq/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="linux tc 系列(4) - mqKernel version: 5.15 tc multiqueueTc 中有 multiqueue，还有 mq，两个其实是不同的东西，关于 tc multiqueue，Documentation&#x2F;networking&#x2F;multiqueue.rst 有相关叙述。 简单来说，qdisc support for multiqueue device，一种是给每个 N">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-01-08T00:44:47.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.697Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="tc">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>linux tc (4) - mq</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/02/07/linux-tc-bpf-tbf/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/01/04/procfs-io-task-io-accounting/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/01/08/linux-tc-mq/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&text=linux tc (4) - mq"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&is_video=false&description=linux tc (4) - mq"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (4) - mq&body=Check out this article: https://middaywords.github.io/2024/01/08/linux-tc-mq/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&name=linux tc (4) - mq&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/01/08/linux-tc-mq/&t=linux tc (4) - mq"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-4-mq"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(4) - mq</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-multiqueue"><span class="toc-number">1.1.</span> <span class="toc-text">tc multiqueue</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-mq"><span class="toc-number">1.2.</span> <span class="toc-text">tc mq</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#other-tips-select-queue"><span class="toc-number">1.3.</span> <span class="toc-text">other tips: select queue</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        linux tc (4) - mq
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-01-08T00:44:47.000Z" class="dt-published" itemprop="datePublished">2024-01-08</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>, <a class="p-category" href="/tags/tc/" rel="tag">tc</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="linux-tc-系列-4-mq"><a href="#linux-tc-系列-4-mq" class="headerlink" title="linux tc 系列(4) - mq"></a>linux tc 系列(4) - mq</h1><p>Kernel version: 5.15</p>
+<h2 id="tc-multiqueue"><a href="#tc-multiqueue" class="headerlink" title="tc multiqueue"></a>tc multiqueue</h2><p>Tc 中有 multiqueue，还有 mq，两个其实是不同的东西，关于 tc multiqueue，<code>Documentation/networking/multiqueue.rst</code> 有相关叙述。</p>
+<p>简单来说，qdisc support for multiqueue device，一种是给每个 NIC queue 配一个 pfifo_fast qdisc，另一种是一个 NIC queue 对应一个 band，用来 avoid head-of-line blocking（#可是一个 NIC 可能有 80 个queue呀，真的需要这么多 band）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line">// Documentation/networking/multiqueue.rst</span><br><span class="line">// ...</span><br><span class="line">Section 2: Qdisc support for multiqueue devices</span><br><span class="line">===============================================</span><br><span class="line"></span><br><span class="line">Currently two qdiscs are optimized for multiqueue devices.  The first is the</span><br><span class="line">default pfifo_fast qdisc.  This qdisc supports one qdisc per hardware queue.</span><br><span class="line">A new round-robin qdisc, sch_multiq also supports multiple hardware queues. The</span><br><span class="line">qdisc is responsible for classifying the skb&#x27;s and then directing the skb&#x27;s to</span><br><span class="line">bands and queues based on the value in skb-&gt;queue_mapping.  Use this field in</span><br><span class="line">the base driver to determine which queue to send the skb to.</span><br><span class="line"></span><br><span class="line">sch_multiq has been added for hardware that wishes to avoid head-of-line</span><br><span class="line">blocking.  It will cycle though the bands and verify that the hardware queue</span><br><span class="line">associated with the band is not stopped prior to dequeuing a packet.</span><br><span class="line"></span><br><span class="line">On qdisc load, the number of bands is based on the number of queues on the</span><br><span class="line">hardware.  Once the association is made, any skb with skb-&gt;queue_mapping set,</span><br><span class="line">will be queued to the band associated with the hardware queue.</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">Section 3: Brief howto using MULTIQ for multiqueue devices</span><br><span class="line">==========================================================</span><br><span class="line"></span><br><span class="line">The userspace command &#x27;tc,&#x27; part of the iproute2 package, is used to configure</span><br><span class="line">qdiscs.  To add the MULTIQ qdisc to your network device, assuming the device</span><br><span class="line">is called eth0, run the following command::</span><br><span class="line"></span><br><span class="line">    # tc qdisc add dev eth0 root handle 1: multiq</span><br><span class="line"></span><br><span class="line">The qdisc will allocate the number of bands to equal the number of queues that</span><br><span class="line">the device reports, and bring the qdisc online.  Assuming eth0 has 4 Tx</span><br><span class="line">queues, the band mapping would look like::</span><br><span class="line"></span><br><span class="line">    band 0 =&gt; queue 0</span><br><span class="line">    band 1 =&gt; queue 1</span><br><span class="line">    band 2 =&gt; queue 2</span><br><span class="line">    band 3 =&gt; queue 3</span><br><span class="line"></span><br><span class="line">Traffic will begin flowing through each queue based on either the simple_tx_hash</span><br><span class="line">function or based on netdev-&gt;select_queue() if you have it defined.</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="tc-mq"><a href="#tc-mq" class="headerlink" title="tc mq"></a>tc mq</h2><p><code>net/sched/sch_mq.c</code> 中定义了  相关的行为。总的来说它定义了  qdisc ops 和 class ops，</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">Qdisc_class_ops</span> <span class="title">mq_class_ops</span> =</span> &#123;</span><br><span class="line">	.select_queue	= mq_select_queue, <span class="comment">// 绑定 queue</span></span><br><span class="line">	.graft		= mq_graft, <span class="comment">// 嫁接 qdisc</span></span><br><span class="line">	.leaf		= mq_leaf,</span><br><span class="line">	.find		= mq_find,</span><br><span class="line">	.walk		= mq_walk,</span><br><span class="line">	.dump		= mq_dump_class,</span><br><span class="line">	.dump_stats	= mq_dump_class_stats,</span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">Qdisc_ops</span> <span class="title">mq_qdisc_ops</span> __<span class="title">read_mostly</span> =</span> &#123;</span><br><span class="line">	.cl_ops		= &amp;mq_class_ops,</span><br><span class="line">	.id		= <span class="string">&quot;mq&quot;</span>,</span><br><span class="line">	.priv_size	= <span class="keyword">sizeof</span>(<span class="keyword">struct</span> mq_sched),</span><br><span class="line">	.init		= mq_init,</span><br><span class="line">	.destroy	= mq_destroy,</span><br><span class="line">	.attach		= mq_attach,</span><br><span class="line">	.change_real_num_tx = mq_change_real_num_tx,</span><br><span class="line">	.dump		= mq_dump,</span><br><span class="line">	.owner		= THIS_MODULE,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>具体看一下 init 过程：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">mq_init</span><span class="params">(<span class="keyword">struct</span> Qdisc *sch, <span class="keyword">struct</span> nlattr *opt,</span></span><br><span class="line"><span class="params">		   <span class="keyword">struct</span> netlink_ext_ack *extack)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// 非 root qdisc 不支持</span></span><br><span class="line">	<span class="keyword">if</span> (sch-&gt;parent != TC_H_ROOT)</span><br><span class="line">		<span class="keyword">return</span> -EOPNOTSUPP;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 没有 multiqueue 不支持</span></span><br><span class="line">	<span class="keyword">if</span> (!netif_is_multiqueue(dev))</span><br><span class="line">		<span class="keyword">return</span> -EOPNOTSUPP;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* pre-allocate qdiscs, attachment can&#x27;t fail */</span></span><br><span class="line">    <span class="comment">// 先分配</span></span><br><span class="line">	priv-&gt;qdiscs = kcalloc(dev-&gt;num_tx_queues, <span class="keyword">sizeof</span>(priv-&gt;qdiscs[<span class="number">0</span>]),</span><br><span class="line">			       GFP_KERNEL);</span><br><span class="line">	<span class="keyword">if</span> (!priv-&gt;qdiscs)</span><br><span class="line">		<span class="keyword">return</span> -ENOMEM;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (ntx = <span class="number">0</span>; ntx &lt; dev-&gt;num_tx_queues; ntx++) &#123;</span><br><span class="line">        <span class="comment">// 获取 netdev 的 NIC queue</span></span><br><span class="line">		dev_queue = netdev_get_tx_queue(dev, ntx);</span><br><span class="line">        <span class="comment">// 创建 qdisc，它的 child 是 default qdisc</span></span><br><span class="line">		qdisc = qdisc_create_dflt(dev_queue, get_default_qdisc_ops(dev, ntx),</span><br><span class="line">					  TC_H_MAKE(TC_H_MAJ(sch-&gt;handle),</span><br><span class="line">						    TC_H_MIN(ntx + <span class="number">1</span>)),</span><br><span class="line">					  extack);</span><br><span class="line">		<span class="keyword">if</span> (!qdisc)</span><br><span class="line">			<span class="keyword">return</span> -ENOMEM;</span><br><span class="line">		priv-&gt;qdiscs[ntx] = qdisc;</span><br><span class="line">		qdisc-&gt;flags |= TCQ_F_ONETXQUEUE | TCQ_F_NOPARENT;</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// TCQ_F_MQROOT 是 multiqueue + ROOT 的标志</span></span><br><span class="line">	sch-&gt;flags |= TCQ_F_MQROOT;</span><br><span class="line"></span><br><span class="line">	mq_offload(sch, TC_MQ_CREATE);</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>关于 class ops，其他都是一些增删查改的操作，其中 select queue 比较特别，可以看一下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">struct</span> netdev_queue *<span class="title function_">mq_queue_get</span><span class="params">(<span class="keyword">struct</span> Qdisc *sch, <span class="type">unsigned</span> <span class="type">long</span> cl)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">net_device</span> *<span class="title">dev</span> =</span> qdisc_dev(sch);</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> ntx = cl - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (ntx &gt;= dev-&gt;num_tx_queues)</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">	<span class="keyword">return</span> netdev_get_tx_queue(dev, ntx);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> netdev_queue *<span class="title function_">mq_select_queue</span><span class="params">(<span class="keyword">struct</span> Qdisc *sch,</span></span><br><span class="line"><span class="params">					    <span class="keyword">struct</span> tcmsg *tcm)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> mq_queue_get(sch, TC_H_MIN(tcm-&gt;tcm_parent));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>以上可以看到 它是根据 <code> TC_H_MIN(tcm-&gt;tcm_parent)</code>，即 minor ID 来与 queue 一一对应的。</p>
+<h2 id="other-tips-select-queue"><a href="#other-tips-select-queue" class="headerlink" title="other tips: select queue"></a>other tips: select queue</h2><p>看到这里，还是有疑问，发送 skb 的时候是怎么映射到 NIC queue 的呢？怎么知道走 tc mq 的哪个 slave 呢？</p>
+<p>在 cilium 的 EDT 里面有 comments 说参考 <code>netdev_pick_tx</code> 这个函数，我们梳理调用路径可以知道</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">__dev_queue_xmit</span><br><span class="line">	-&gt; netdev_core_pick_tx</span><br><span class="line">		-&gt; netdev_pick_tx</span><br></pre></td></tr></table></figure>
+
+<p>在 netdev_core_pick_tx 中</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> netdev_queue *<span class="title function_">netdev_core_pick_tx</span><span class="params">(<span class="keyword">struct</span> net_device *dev,</span></span><br><span class="line"><span class="params">					 <span class="keyword">struct</span> sk_buff *skb,</span></span><br><span class="line"><span class="params">					 <span class="keyword">struct</span> net_device *sb_dev)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> queue_index = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_XPS</span></span><br><span class="line">	u32 sender_cpu = skb-&gt;sender_cpu - <span class="number">1</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (sender_cpu &gt;= (u32)NR_CPUS)</span><br><span class="line">		skb-&gt;sender_cpu = raw_smp_processor_id() + <span class="number">1</span>;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (dev-&gt;real_num_tx_queues != <span class="number">1</span>) &#123;</span><br><span class="line">		<span class="type">const</span> <span class="class"><span class="keyword">struct</span> <span class="title">net_device_ops</span> *<span class="title">ops</span> =</span> dev-&gt;netdev_ops;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (ops-&gt;ndo_select_queue)</span><br><span class="line">            <span class="comment">// 优先根据设备配置的 net_device_ops select queue 的方法</span></span><br><span class="line">			queue_index = ops-&gt;ndo_select_queue(dev, skb, sb_dev);</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">            <span class="comment">// 没有配置的话，调内部函数 netdev_pick_tx 来选 queue</span></span><br><span class="line">			queue_index = netdev_pick_tx(dev, skb, sb_dev);</span><br><span class="line"></span><br><span class="line">		queue_index = netdev_cap_txqueue(dev, queue_index);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	skb_set_queue_mapping(skb, queue_index);</span><br><span class="line">	<span class="keyword">return</span> netdev_get_tx_queue(dev, queue_index);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>每个网络 driver 可以配置其选 tx queue  的算法</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment">* u16 (*ndo_select_queue)(struct net_device *dev, struct sk_buff *skb,</span></span><br><span class="line"><span class="comment"> *                         struct net_device *sb_dev);</span></span><br><span class="line"><span class="comment"> *	Called to decide which queue to use when device supports multiple</span></span><br><span class="line"><span class="comment"> *	transmit queues.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">net_device_ops</span> &#123;</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">	u16			(*ndo_select_queue)(<span class="keyword">struct</span> net_device *dev,</span><br><span class="line">						    <span class="keyword">struct</span> sk_buff *skb,</span><br><span class="line">						    <span class="keyword">struct</span> net_device *sb_dev);</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>后面我们来分析一下 <code>netdev_pick_tx</code> 的实现：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line">u16 <span class="title function_">netdev_pick_tx</span><span class="params">(<span class="keyword">struct</span> net_device *dev, <span class="keyword">struct</span> sk_buff *skb,</span></span><br><span class="line"><span class="params">		     <span class="keyword">struct</span> net_device *sb_dev)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">sock</span> *<span class="title">sk</span> =</span> skb-&gt;sk;</span><br><span class="line">	<span class="type">int</span> queue_index = sk_tx_queue_get(sk);</span><br><span class="line"></span><br><span class="line">	sb_dev = sb_dev ? : dev;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (queue_index &lt; <span class="number">0</span> || skb-&gt;ooo_okay ||</span><br><span class="line">	    queue_index &gt;= dev-&gt;real_num_tx_queues) &#123;</span><br><span class="line">		<span class="type">int</span> new_index = get_xps_queue(dev, sb_dev, skb);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (new_index &lt; <span class="number">0</span>)</span><br><span class="line">			new_index = skb_tx_hash(dev, sb_dev, skb);</span><br><span class="line"></span><br><span class="line">		<span class="keyword">if</span> (queue_index != new_index &amp;&amp; sk &amp;&amp;</span><br><span class="line">		    sk_fullsock(sk) &amp;&amp;</span><br><span class="line">		    rcu_access_pointer(sk-&gt;sk_dst_cache))</span><br><span class="line">			sk_tx_queue_set(sk, new_index);</span><br><span class="line"></span><br><span class="line">		queue_index = new_index;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> queue_index;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL(netdev_pick_tx);</span><br></pre></td></tr></table></figure>
+
+<p><code>sk_tx_queue_get</code> 分析 skb queue_mapping 是否已经设置，如果设置了就直接使用，跳过。否则设置为 -1。</p>
+<p>否则会进入 if 选择 queue，queue_index 不合法或者 ooo_okay(out of order?) 会进行 xps 选 queue，首先调用 <code>get_xps_queue</code>，它会使用一个由用户配置的 TX queue 到 CPU 的映射，这称为 XPS（Transmit Packet Steering ，发送数据包控制）。</p>
+<p>如果内核不支持 XPS，或者系统管理员未配置 XPS，或者配置的映射引用了无效队列， <code>get_xps_queue</code> 返回-1，则代码将继续调用 <code>skb_tx_hash</code>。</p>
+<p>关于 XPS: <a target="_blank" rel="noopener" href="https://github.com/torvalds/linux/blob/v3.13/Documentation/networking/scaling.txt#L364-L422">linux&#x2F;Documentation&#x2F;networking&#x2F;scaling.txt at v3.13 · torvalds&#x2F;linux · GitHub</a></p>
+<p>XPS 也没有配置的话，则根据 <code>skb_tx_hash</code> 来计算。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-4-mq"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(4) - mq</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-multiqueue"><span class="toc-number">1.1.</span> <span class="toc-text">tc multiqueue</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-mq"><span class="toc-number">1.2.</span> <span class="toc-text">tc mq</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#other-tips-select-queue"><span class="toc-number">1.3.</span> <span class="toc-text">other tips: select queue</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/01/08/linux-tc-mq/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&text=linux tc (4) - mq"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&is_video=false&description=linux tc (4) - mq"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (4) - mq&body=Check out this article: https://middaywords.github.io/2024/01/08/linux-tc-mq/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&title=linux tc (4) - mq"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/01/08/linux-tc-mq/&name=linux tc (4) - mq&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/01/08/linux-tc-mq/&t=linux tc (4) - mq"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

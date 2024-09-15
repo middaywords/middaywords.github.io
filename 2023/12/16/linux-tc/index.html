@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="linux tc 系列(1) - overviewTC 可以先读 https:&#x2F;&#x2F;tldp.org&#x2F;HOWTO&#x2F;Traffic-Control-HOWTO&#x2F; 有一些 general 的概念。 tc frameworktc 是在 L2 实现的，实现为 queue discipline，简称 qdisc。 以下内容参考 Linux-Traffic-Control-Classifier-Action-S">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux tc (1) - overview">
+<meta property="og:url" content="https://middaywords.github.io/2023/12/16/linux-tc/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="linux tc 系列(1) - overviewTC 可以先读 https:&#x2F;&#x2F;tldp.org&#x2F;HOWTO&#x2F;Traffic-Control-HOWTO&#x2F; 有一些 general 的概念。 tc frameworktc 是在 L2 实现的，实现为 queue discipline，简称 qdisc。 以下内容参考 Linux-Traffic-Control-Classifier-Action-S">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-12-16T10:01:49.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.697Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="tc">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>linux tc (1) - overview</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/01/02/linux-tc-fq/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/11/13/linux-tc-bpf/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/12/16/linux-tc/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/12/16/linux-tc/&text=linux tc (1) - overview"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/12/16/linux-tc/&is_video=false&description=linux tc (1) - overview"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (1) - overview&body=Check out this article: https://middaywords.github.io/2023/12/16/linux-tc/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/12/16/linux-tc/&name=linux tc (1) - overview&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/12/16/linux-tc/&t=linux tc (1) - overview"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-1-overview"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(1) - overview</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-framework"><span class="toc-number">1.1.</span> <span class="toc-text">tc framework</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#L2-%E8%BF%9B%E5%85%A5-qdisc-%E5%89%8D%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B"><span class="toc-number">1.2.</span> <span class="toc-text">L2 进入 qdisc 前处理过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.3.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        linux tc (1) - overview
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-12-16T10:01:49.000Z" class="dt-published" itemprop="datePublished">2023-12-16</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/tc/" rel="tag">tc</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="linux-tc-系列-1-overview"><a href="#linux-tc-系列-1-overview" class="headerlink" title="linux tc 系列(1) - overview"></a>linux tc 系列(1) - overview</h1><p>TC 可以先读 <a target="_blank" rel="noopener" href="https://tldp.org/HOWTO/Traffic-Control-HOWTO/">https://tldp.org/HOWTO/Traffic-Control-HOWTO/</a> 有一些 general 的概念。</p>
+<h2 id="tc-framework"><a href="#tc-framework" class="headerlink" title="tc framework"></a>tc framework</h2><p>tc 是在 L2 实现的，实现为 queue discipline，简称 qdisc。</p>
+<p>以下内容参考 <a target="_blank" rel="noopener" href="https://people.netfilter.org/pablo/netdev0.1/papers/Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf">Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf (netfilter.org)</a></p>
+<p>关于 qdisc，有几个相关概念</p>
+<ul>
+<li>qdisc： 可以是 classful 或者 classless 的。 classful qdisc 会有多个 classes，通过 qdisc 的 filter 进行分类。classful 的 qdisc 会包含其他的 qdisc，形成一个层级结构。每个 qdisc 由一个 32-bit 的 id 来确定，高 16 bit 称为 major id， 低 16 位称为 minor id。</li>
+<li>Class: 可能是 queue 可能是 qdisc，queue 是叶子(classless qdisc)，可以执行排队规则， qdisc 则进入</li>
+<li>Filter：根据 packet，依据算法分类到下一级 class</li>
+<li>Action: 当 classifier filter 结果 match 的时候，执行对应的 action</li>
+</ul>
+<p>一个 port(netdev)会有两个 default qdisc points，一个是 egress path 的 root qdisc ，一个是 ingress 的 qdisc。ingress 的 qdisc 一般不执行 traffic control，只做一些 processing。</p>
+<p>example qdisc:</p>
+<ol>
+<li>prio. Flows selected internally based on TOS or skb-&gt;priority fields. Work conserving scheduling algorithm based on strict priority sorting (meaning low prio packets may be starved). </li>
+<li>Pfifo. 单个 fifo queue</li>
+<li>Red. Classless qdisc with scheduling based on the RED algorithm.  </li>
+<li>tbf 令牌桶. Classless qdisc, non-work conserving scheduling algorithm for shaping that is based on token bucket algorithm. </li>
+<li>htb. Hierarchical(classful) qdisc extension to TBF. </li>
+<li>Sfq. Stochastic fair queueing.  </li>
+<li>codel. Based on controlled delay algorithm. </li>
+<li>fq-codel. Extending codel with a sfq flavoring.</li>
+<li>Netem. Provides a variety of network emulation functionality for testing protocols by allowing mucking around with the protocol properties and semantics</li>
+</ol>
+<p>我们以一条 tc 指令来说明</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">tc filter add dev <span class="variable">$DEV</span> parent 1:0 protocol ip prio 10 \ </span></span><br><span class="line">u32 match ip protocol 1 0xff \ </span><br><span class="line">classid 1:10 \ </span><br><span class="line">action ok</span><br></pre></td></tr></table></figure>
+
+<p>将 filter attach 到 $DEV 的端口，filter 放在 egress qdisc 上，classid 是 1:0。匹配 ipv4 协议数据包，filter priority 为 10，使用 u32 classifier，检查是否 match icmp 协议(protocol 1 就是 ICMP)，一旦 match 了，那么就分类到选择 qdisc 1:10，接受数据包。</p>
+<p>关于 <strong>filter</strong>: 一个端口的qdisc的一种协议可能配置多个 filter，根据 priority 来按顺序使用。</p>
+<p>比如上面的例子里面用的是 u32 classifier，也会有其他的 classifier，u32，fw（用 skb mark metadata 来 match），route（用 ip route 规则来 match），rsvp，basic（由多个 其他类型 classifier 组合），BPF，Flow（packet conntrack,user_id,group_id）组合使用，OpenFlow classifier（由 OpenFlow spec 定义），还有其他的。</p>
+<p>每个 classifier&#x2F;filter 都有数据结构，给一个包（skb），返回一个 判定结果，给出 action。</p>
+<p>关于<strong>action</strong>：上面的例子中，当 match 的时候，就会选择 action: accept，于是可以送进 协议栈中进行处理。action 还包括 reschedule，重新 filter 一遍，于是会有 pipeline 式的执行过程 A|B|C|D。actions 包括:(nat, checksum, TBF policer, gact, pedit, mirred, vlan, skbedit, connmark, 等)</p>
+<p>gact: generic action，包括 accept&#x2F;drop 包</p>
+<p>Pedit: packet editor,可以对包做一些 xor, or, and 之类的</p>
+<p>Mirred: 重定向包到另一个端口</p>
+<p>vlan：encap&#x2F;decap VLAN tags</p>
+<p>Skbedit: 修改 skb 的 metadata</p>
+<p>Connmark: 将 netfilter connection tracking 的一些details 和 skb marks 联系起来。</p>
+<h2 id="L2-进入-qdisc-前处理过程"><a href="#L2-进入-qdisc-前处理过程" class="headerlink" title="L2 进入 qdisc 前处理过程"></a>L2 进入 qdisc 前处理过程</h2><ul>
+<li><code>__dev_queue_xmit</code></li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __dev_queue_xmit(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> net_device *sb_dev)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">net_device</span> *<span class="title">dev</span> =</span> skb-&gt;dev;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">netdev_queue</span> *<span class="title">txq</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">Qdisc</span> *<span class="title">q</span>;</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    </span><br><span class="line">	<span class="comment">// 根据 net cgroup 设置 skb 优先级，/sys/fs/cgroup/net_prio 相关实现</span></span><br><span class="line">	skb_update_prio(skb);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 计算 GSO 情况下的 bytes sent on wire</span></span><br><span class="line">	qdisc_pkt_len_init(skb);</span><br><span class="line">	<span class="comment">// tcx 区分是 ingress/egress</span></span><br><span class="line">	tcx_set_ingress(skb, <span class="literal">false</span>);</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_NET_EGRESS</span></span><br><span class="line">	<span class="keyword">if</span> (static_branch_unlikely(&amp;egress_needed_key)) &#123;</span><br><span class="line">		<span class="comment">// L2 egress 的 netfilter</span></span><br><span class="line">		<span class="keyword">if</span> (nf_hook_egress_active()) &#123;</span><br><span class="line">			skb = nf_hook_egress(skb, &amp;rc, dev);</span><br><span class="line">			<span class="keyword">if</span> (!skb)</span><br><span class="line">				<span class="keyword">goto</span> out;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		netdev_xmit_skip_txqueue(<span class="literal">false</span>);</span><br><span class="line"></span><br><span class="line">		nf_skip_egress(skb, <span class="literal">true</span>);</span><br><span class="line">		<span class="comment">// tc cls_act 在这里运行</span></span><br><span class="line">		skb = sch_handle_egress(skb, &amp;rc, dev);</span><br><span class="line">		<span class="keyword">if</span> (!skb)</span><br><span class="line">			<span class="keyword">goto</span> out;</span><br><span class="line">		nf_skip_egress(skb, <span class="literal">false</span>);</span><br><span class="line">		<span class="comment">// 根据 bpf 程序设置的 queue_mapping 来决定</span></span><br><span class="line">		<span class="keyword">if</span> (netdev_xmit_txqueue_skipped())</span><br><span class="line">			txq = netdev_tx_queue_mapping(dev, skb);</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">	<span class="comment">// 检查 IFF_XMIT_DST_RELEASE 标志，此标志允许内核释放 skb 的目标缓存。如果标志已禁用，将强制对 skb 进行引用计数</span></span><br><span class="line">	<span class="keyword">if</span> (dev-&gt;priv_flags &amp; IFF_XMIT_DST_RELEASE)</span><br><span class="line">		skb_dst_drop(skb);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		skb_dst_force(skb);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 如果 bpf 已经设置了，那么不需要继续操作了，否则根据 driver 和 xps 或者 hash 来决定</span></span><br><span class="line">	<span class="keyword">if</span> (!txq)</span><br><span class="line">		txq = netdev_core_pick_tx(dev, skb, sb_dev);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 获取网卡 netdev_queue 上绑定的 qdisc</span></span><br><span class="line">	q = rcu_dereference_bh(txq-&gt;qdisc);</span><br><span class="line"></span><br><span class="line">	trace_net_dev_queue(skb);</span><br><span class="line">	<span class="keyword">if</span> (q-&gt;enqueue) &#123;</span><br><span class="line">		rc = __dev_xmit_skb(skb, q, dev, txq);</span><br><span class="line">		<span class="keyword">goto</span> out;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 隧道设备和 loopback device 没有 qdisc 直接发送</span></span><br><span class="line">	<span class="keyword">if</span> (dev-&gt;flags &amp; IFF_UP) &#123;</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">        skb = dev_hard_start_xmit</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL(__dev_queue_xmit);</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>skb_update_prio</code>: &#x2F;sys&#x2F;fs&#x2F;cgroup&#x2F;net_prio 相关实现  <a target="_blank" rel="noopener" href="https://www.spinics.net/lists/netdev/msg179826.html">https://www.spinics.net/lists/netdev/msg179826.html</a></li>
+<li><code>qdisc_pkt_len_init</code>: 计算 GSO 情况下的 bytes sent on wire，对于 bandwidth estimation 会更准</li>
+<li><code>skb = sch_handle_egress(skb, &amp;rc, dev);</code> : 运行 cls_act bpf</li>
+<li><code>netdev_tx_queue_mapping</code>: 如果 cls_act bpf 设置 queue_mapping，后面就不用再设置了。这里支持了用户自己执行 txq 的绑定。可以实现 pod mapping 到 txq 上</li>
+<li><code>netdev_core_pick_tx</code>: 如果 bpf 设置了 queue mapping，则这一步不需要再选 queue，否则走内核自己的选 queue 流程， 根据 xps, <code>ndo_select_queue()</code> of netdev driver, or skb hash  in <code>netdev_core_pick_tx()</code> 来选择 queue</li>
+<li><code>q = rcu_dereference_bh(txq-&gt;qdisc);</code> : 获取网卡 netdev_queue 上绑定的 qdisc，这个是可能控制面要修改之类的</li>
+<li>如果有 enqueue 规则，则执行 <code>__dev_xmit_skb(skb, q, dev, txq);</code> 发送逻辑</li>
+</ol>
+<hr>
+<ul>
+<li><code>__dev_xmit_skb</code></li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> __dev_xmit_skb(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> Qdisc *q,</span><br><span class="line">				 <span class="keyword">struct</span> net_device *dev,</span><br><span class="line">				 <span class="keyword">struct</span> netdev_queue *txq)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">// 拿到 qdisc 的 lock</span></span><br><span class="line">	<span class="type">spinlock_t</span> *root_lock = qdisc_lock(q);</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// NOLOCK 的 qdisc，如 pfifo_fast</span></span><br><span class="line">	<span class="keyword">if</span> (q-&gt;flags &amp; TCQ_F_NOLOCK) &#123;</span><br><span class="line">        <span class="comment">// bypass qdisc</span></span><br><span class="line">		<span class="keyword">if</span> (q-&gt;flags &amp; TCQ_F_CAN_BYPASS &amp;&amp; nolock_qdisc_is_empty(q) &amp;&amp;</span><br><span class="line">		    qdisc_run_begin(q)) &#123;</span><br><span class="line">            <span class="comment">// ...</span></span><br><span class="line">        &#125;</span><br><span class="line">		<span class="comment">// 不能 bypass，还是得走 qdisc，调用 qdisc-&gt;enqueue，不过这是 NOLOCK 的情况</span></span><br><span class="line">		rc = dev_qdisc_enqueue(skb, q, &amp;to_free, txq);</span><br><span class="line">		qdisc_run(q);</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    contended = qdisc_is_running(q) || IS_ENABLED(CONFIG_PREEMPT_RT);</span><br><span class="line">	<span class="keyword">if</span> (unlikely(contended))</span><br><span class="line">		spin_lock(&amp;q-&gt;busylock);</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 给 qdisc 上锁</span></span><br><span class="line">	spin_lock(root_lock);</span><br><span class="line">	<span class="keyword">if</span> (unlikely(test_bit(__QDISC_STATE_DEACTIVATED, &amp;q-&gt;state))) &#123;</span><br><span class="line">		<span class="comment">// 未启用 qdisc，直接drop</span></span><br><span class="line">		__qdisc_drop(skb, &amp;to_free);</span><br><span class="line">		rc = NET_XMIT_DROP;</span><br><span class="line">	&#125; <span class="keyword">else</span> <span class="keyword">if</span> ((q-&gt;flags &amp; TCQ_F_CAN_BYPASS) &amp;&amp; !qdisc_qlen(q) &amp;&amp;</span><br><span class="line">		   qdisc_run_begin(q)) &#123;</span><br><span class="line">        <span class="comment">// bypass 的情况</span></span><br><span class="line">        <span class="keyword">if</span> (sch_direct_xmit(skb, q, dev, txq, root_lock, <span class="literal">true</span>)) &#123;</span><br><span class="line">			<span class="keyword">if</span> (unlikely(contended)) &#123;</span><br><span class="line">				spin_unlock(&amp;q-&gt;busylock);</span><br><span class="line">				contended = <span class="literal">false</span>;</span><br><span class="line">			&#125;</span><br><span class="line">			__qdisc_run(q);</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		qdisc_run_end(q);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 正常逻辑传输</span></span><br><span class="line">		rc = dev_qdisc_enqueue(skb, q, &amp;to_free, txq);</span><br><span class="line">		<span class="keyword">if</span> (qdisc_run_begin(q)) &#123;</span><br><span class="line">			<span class="keyword">if</span> (unlikely(contended)) &#123;</span><br><span class="line">				spin_unlock(&amp;q-&gt;busylock);</span><br><span class="line">				contended = <span class="literal">false</span>;</span><br><span class="line">			&#125;</span><br><span class="line">			__qdisc_run(q);</span><br><span class="line">			qdisc_run_end(q);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">    <span class="keyword">return</span> rc;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里分为几种情况，</p>
+<ol>
+<li><p><code>if (q-&gt;flags &amp; TCQ_F_NOLOCK)</code>: 是否支持 TCQ_F_NOLOCK，支持说明不需要 qdisc lock 上锁。</p>
+<ol>
+<li>对于不需要上锁的情况，也需要判断 qdisc 是否能够被 bypass，可以的话直接调用 <code>sch_direct_xmit</code> 进行传输</li>
+<li>不能 bypass 则还是得走 qdisc，<code>dev_qdisc_enqueue()</code> 会调用 enqueue，<code>qdisc_run()</code> 中会调用 dequeue。</li>
+</ol>
+</li>
+<li><p>不支持 TCQ_F_NOLOCK</p>
+<ol>
+<li><p><code>spin_lock(root_lock);</code> 给 qdisc 上锁</p>
+</li>
+<li><p><code>test_bit(__QDISC_STATE_DEACTIVATED, &amp;q-&gt;state)</code>: 未启用 qdisc，则直接 drop</p>
+</li>
+<li><p><code>(q-&gt;flags &amp; TCQ_F_CAN_BYPASS) &amp;&amp; !qdisc_qlen(q) &amp;&amp;qdisc_run_begin(q)</code>: 可以 bypass，则直接调用 <code>sch_direct_xmit</code> 进行传输</p>
+</li>
+<li><p>不能 bypass 则走 <code>dev_qdisc_enqueue</code> 逻辑传输</p>
+</li>
+</ol>
+</li>
+</ol>
+<hr>
+<p>我们这里看到往后面进入 qdisc 之前，主要有几种情况，</p>
+<ol>
+<li>bypass 直接传输: <code>sch_direct_xmit()</code></li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">qdisc_bstats_cpu_update(q, skb);</span><br><span class="line"><span class="keyword">if</span> (sch_direct_xmit(skb, q, dev, txq, <span class="literal">NULL</span>, <span class="literal">true</span>) &amp;&amp;</span><br><span class="line">    !nolock_qdisc_is_empty(q))</span><br><span class="line">             <span class="comment">// 判断成立说明 feel free to send more pkts，可以继续发包</span></span><br><span class="line">	__qdisc_run(q);</span><br><span class="line">         <span class="comment">// 完成后将状态恢复</span></span><br><span class="line">qdisc_run_end(q);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">bool</span> <span class="title function_">sch_direct_xmit</span><span class="params">(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> Qdisc *q,</span></span><br><span class="line"><span class="params">		     <span class="keyword">struct</span> net_device *dev, <span class="keyword">struct</span> netdev_queue *txq,</span></span><br><span class="line"><span class="params">		     <span class="type">spinlock_t</span> *root_lock, <span class="type">bool</span> validate)</span> &#123;</span><br><span class="line">    <span class="comment">// ..</span></span><br><span class="line">    <span class="keyword">if</span> (likely(skb)) &#123;</span><br><span class="line">    HARD_TX_LOCK(dev, txq, smp_processor_id());</span><br><span class="line">    <span class="keyword">if</span> (!netif_xmit_frozen_or_stopped(txq))</span><br><span class="line">        skb = dev_hard_start_xmit(skb, dev, txq, &amp;ret);</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>dev_hard_start_xmit()</code> 中调用网络驱动发送逻辑</p>
+<ol start="2">
+<li>enqueue: <code>dev_qdisc_enqueue()</code>，里面即调用了 qdisc-&gt;enqueue</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">rc = dev_qdisc_enqueue(skb, q, &amp;to_free, txq);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">dev_qdisc_enqueue</span><span class="params">(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> Qdisc *q,</span></span><br><span class="line"><span class="params">			     <span class="keyword">struct</span> sk_buff **to_free,</span></span><br><span class="line"><span class="params">			     <span class="keyword">struct</span> netdev_queue *txq)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">	rc = q-&gt;enqueue(skb, q, to_free) &amp; NET_XMIT_MASK;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>q-&gt;enqueue(skb, q, to_free)</code> 进入 qdisc 的 enqueue 方法。</p>
+<ol start="3">
+<li>dequeue:  <code>qdisc_run_begin()</code> + <code>__qdisc_run()</code> + <code>qdisc_run_end()</code></li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (qdisc_run_begin(q)) &#123;</span><br><span class="line">	<span class="keyword">if</span> (unlikely(contended)) &#123;</span><br><span class="line">		spin_unlock(&amp;q-&gt;busylock);</span><br><span class="line">		contended = <span class="literal">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line">	__qdisc_run(q);</span><br><span class="line">	qdisc_run_end(q);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>qdisc_run_begin()</code> + <code>qdisc_run_end()</code> 是设置 qdisc  的运行状态，主要的处理逻辑在 <code>__qdisc_run()</code> 中。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> __qdisc_run(<span class="keyword">struct</span> Qdisc *q)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> quota = READ_ONCE(dev_tx_weight);</span><br><span class="line">	<span class="type">int</span> packets;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">while</span> (qdisc_restart(q, &amp;packets)) &#123;</span><br><span class="line">		quota -= packets;</span><br><span class="line">		<span class="keyword">if</span> (quota &lt;= <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span> (q-&gt;flags &amp; TCQ_F_NOLOCK)</span><br><span class="line">				set_bit(__QDISC_STATE_MISSED, &amp;q-&gt;state);</span><br><span class="line">			<span class="keyword">else</span></span><br><span class="line">				__netif_schedule(q);</span><br><span class="line"></span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这里会一直调用 <code>qdisc_restart</code> 直到 quota 耗尽，再调用 <code>sch_direct_xmit()</code> 进行发送。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * <span class="doctag">NOTE:</span> Called under qdisc_lock(q) with locally disabled BH.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * running seqcount guarantees only one CPU can process</span></span><br><span class="line"><span class="comment"> * this qdisc at a time. qdisc_lock(q) serializes queue accesses for</span></span><br><span class="line"><span class="comment"> * this queue.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *  netif_tx_lock serializes accesses to device driver.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> *  qdisc_lock(q) and netif_tx_lock are mutually exclusive,</span></span><br><span class="line"><span class="comment"> *  if one is grabbed, another must be free.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Note, that this procedure can be called by a watchdog timer</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> * Returns to the caller:</span></span><br><span class="line"><span class="comment"> *				0  - queue is empty or throttled.</span></span><br><span class="line"><span class="comment"> *				&gt;0 - queue is not empty.</span></span><br><span class="line"><span class="comment"> *</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">qdisc_restart</span><span class="params">(<span class="keyword">struct</span> Qdisc *q, <span class="type">int</span> *packets)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">spinlock_t</span> *root_lock = <span class="literal">NULL</span>;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">netdev_queue</span> *<span class="title">txq</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">net_device</span> *<span class="title">dev</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">sk_buff</span> *<span class="title">skb</span>;</span></span><br><span class="line">	<span class="type">bool</span> validate;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Dequeue packet */</span></span><br><span class="line">    <span class="comment">// 从 qdisc 中获取 skb</span></span><br><span class="line">	skb = dequeue_skb(q, &amp;validate, packets);</span><br><span class="line">	<span class="keyword">if</span> (unlikely(!skb))</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!(q-&gt;flags &amp; TCQ_F_NOLOCK))</span><br><span class="line">		root_lock = qdisc_lock(q);</span><br><span class="line"></span><br><span class="line">	dev = qdisc_dev(q);</span><br><span class="line">	txq = skb_get_tx_queue(dev, skb);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> sch_direct_xmit(skb, q, dev, txq, root_lock, validate);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ol>
+<li>TC 介绍<ol>
+<li>arch overview <a target="_blank" rel="noopener" href="https://people.netfilter.org/pablo/netdev0.1/papers/Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf">https://people.netfilter.org/pablo/netdev0.1/papers/Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf</a></li>
+<li>LINUX TC HOWTO <a target="_blank" rel="noopener" href="https://tldp.org/HOWTO/Traffic-Control-HOWTO/">https://tldp.org/HOWTO/Traffic-Control-HOWTO/</a></li>
+<li><a target="_blank" rel="noopener" href="https://arthurchiao.art/blog/traffic-control-from-queue-to-edt-zh/#51-cilium-pod-egress-%E9%99%90%E9%80%9F">https://arthurchiao.art/blog/traffic-control-from-queue-to-edt-zh/#51-cilium-pod-egress-%E9%99%90%E9%80%9F</a></li>
+</ol>
+</li>
+<li>tc 源码分析<ol>
+<li><a target="_blank" rel="noopener" href="https://abcdxyzk.github.io/blog/2020/05/22/kernel-qdisc/">https://abcdxyzk.github.io/blog/2020/05/22/kernel-qdisc/</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.iteye.com/blog/cxw06023273-867318">https://www.iteye.com/blog/cxw06023273-867318</a></li>
+<li><a target="_blank" rel="noopener" href="https://guanjunjian.github.io/2017/11/20/study-10-hierachical-token-bucket-source-code-1/">https://guanjunjian.github.io/2017/11/20/study-10-hierachical-token-bucket-source-code-1/</a></li>
+</ol>
+</li>
+<li>关于 EDT<ol>
+<li>2018<ul>
+<li>Netdev: <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=MAni0_lN7zE">https://www.youtube.com/watch?v=MAni0_lN7zE</a></li>
+<li>oct: <a target="_blank" rel="noopener" href="https://documents.pub/document/oct-2018-david-wetherall-presenter-nandita-dukkipati-talks2018davidwetherall.html?page=1">https://documents.pub/document/oct-2018-david-wetherall-presenter-nandita-dukkipati-talks2018davidwetherall.html?page=1</a></li>
+<li><a target="_blank" rel="noopener" href="http://vger.kernel.org/lpc_bpf2018_talks/lpc-bpf-2018-shaping.pdf">http://vger.kernel.org/lpc_bpf2018_talks/lpc-bpf-2018-shaping.pdf</a></li>
+</ul>
+</li>
+<li>2020<ul>
+<li><a target="_blank" rel="noopener" href="https://legacy.netdevconf.info/0x14/pub/papers/55/0x14-paper55-talk-paper.pdf">https://legacy.netdevconf.info/0x14/pub/papers/55/0x14-paper55-talk-paper.pdf</a></li>
+</ul>
+</li>
+<li>cilium 的 EDT 设计<ul>
+<li><a target="_blank" rel="noopener" href="https://isovalent.com/blog/post/addressing-bandwidth-exhaustion-with-cilium-bandwidth-manager/">https://isovalent.com/blog/post/addressing-bandwidth-exhaustion-with-cilium-bandwidth-manager/</a></li>
+<li><a target="_blank" rel="noopener" href="https://cilium.io/use-cases/bandwidth-optimization/">https://cilium.io/use-cases/bandwidth-optimization/</a></li>
+</ul>
+</li>
+<li>talks &amp; papers</li>
+<li><a target="_blank" rel="noopener" href="https://netdevconf.info/0x17/sessions/talk/ebpf-qdisc-a-generic-building-block-for-traffic-control.html">https://netdevconf.info/0x17/sessions/talk/ebpf-qdisc-a-generic-building-block-for-traffic-control.html</a></li>
+<li></li>
+</ol>
+</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-1-overview"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(1) - overview</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-framework"><span class="toc-number">1.1.</span> <span class="toc-text">tc framework</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#L2-%E8%BF%9B%E5%85%A5-qdisc-%E5%89%8D%E5%A4%84%E7%90%86%E8%BF%87%E7%A8%8B"><span class="toc-number">1.2.</span> <span class="toc-text">L2 进入 qdisc 前处理过程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.3.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/12/16/linux-tc/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/12/16/linux-tc/&text=linux tc (1) - overview"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/12/16/linux-tc/&is_video=false&description=linux tc (1) - overview"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (1) - overview&body=Check out this article: https://middaywords.github.io/2023/12/16/linux-tc/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/12/16/linux-tc/&title=linux tc (1) - overview"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/12/16/linux-tc/&name=linux tc (1) - overview&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/12/16/linux-tc/&t=linux tc (1) - overview"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

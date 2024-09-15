@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="《TCP CC: a systems approach》notes 2: control-based ccßLink: https:&#x2F;&#x2F;tcpcc.systemsapproach.org&#x2F;index.html  概括总结 by kimi 前一节 introduction 最后说到 implementation choices 主要有两种，一种是 control-based，一种是 avoidanc">
+<meta property="og:type" content="article">
+<meta property="og:title" content="《TCP CC - a systems approach》notes (2) - loss-based cc">
+<meta property="og:url" content="https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="《TCP CC: a systems approach》notes 2: control-based ccßLink: https:&#x2F;&#x2F;tcpcc.systemsapproach.org&#x2F;index.html  概括总结 by kimi 前一节 introduction 最后说到 implementation choices 主要有两种，一种是 control-based，一种是 avoidanc">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://tcpcc.systemsapproach.org/_images/Slide9.png">
+<meta property="article:published_time" content="2024-05-02T15:17:04.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.694Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="network">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://tcpcc.systemsapproach.org/_images/Slide9.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>《TCP CC - a systems approach》notes (2) - loss-based cc</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/05/04/2024-0503-tcp-cc-3/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/05/02/2024-0502-tcp-cc-1/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&text=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&is_video=false&description=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=《TCP CC - a systems approach》notes (2) - loss-based cc&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&name=《TCP CC - a systems approach》notes (2) - loss-based cc&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&t=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E3%80%8ATCP-CC-a-systems-approach%E3%80%8Bnotes-2-control-based-ccs"><span class="toc-number">1.</span> <span class="toc-text">《TCP CC: a systems approach》notes 2: control-based ccß</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-Timeout-calculation"><span class="toc-number">1.1.</span> <span class="toc-text">4.1 Timeout calculation</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#original-algorithm"><span class="toc-number">1.1.1.</span> <span class="toc-text">original algorithm</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Karn-Partridge%E7%AE%97%E6%B3%95"><span class="toc-number">1.1.2.</span> <span class="toc-text">Karn&#x2F;Partridge算法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Jacobson-Karels%E7%AE%97%E6%B3%95"><span class="toc-number">1.1.2.1.</span> <span class="toc-text">Jacobson&#x2F;Karels算法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-5-incremental-enhancements"><span class="toc-number">1.2.</span> <span class="toc-text">4.5 incremental enhancements</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SACK"><span class="toc-number">1.2.1.</span> <span class="toc-text">SACK</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-6-cubic"><span class="toc-number">1.3.</span> <span class="toc-text">4.6 cubic</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        《TCP CC - a systems approach》notes (2) - loss-based cc
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-05-02T15:17:04.000Z" class="dt-published" itemprop="datePublished">2024-05-02</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="《TCP-CC-a-systems-approach》notes-2-control-based-ccs"><a href="#《TCP-CC-a-systems-approach》notes-2-control-based-ccs" class="headerlink" title="《TCP CC: a systems approach》notes 2: control-based ccß"></a>《TCP CC: a systems approach》notes 2: control-based ccß</h1><p>Link: <a target="_blank" rel="noopener" href="https://tcpcc.systemsapproach.org/index.html">https://tcpcc.systemsapproach.org/index.html</a> </p>
+<p>概括总结 by kimi</p>
+<p>前一节 introduction 最后说到 implementation choices 主要有两种，一种是 control-based，一种是 avoidance-based。这一节介绍其一。</p>
+<h2 id="4-1-Timeout-calculation"><a href="#4-1-Timeout-calculation" class="headerlink" title="4.1 Timeout calculation"></a>4.1 Timeout calculation</h2><p>超时和重传是TCP实现可靠字节流的核心部分，超时也在拥塞控制中起着关键作用，因为它们标志着数据包丢失，这反过来又表明了可能发生了拥塞。换句话说，TCP的超时机制是其整体拥塞控制方法的一个基础(building block)。</p>
+<h3 id="original-algorithm"><a href="#original-algorithm" class="headerlink" title="original algorithm"></a>original algorithm</h3><p>我们从最初在TCP规范中描述的简单算法开始。该算法的目的是保持一个RTT（往返时间）的运行平均值，然后根据这个RTT来计算超时。具体来说，每次TCP发送一个数据段时，它会记录时间。当该段的确认（ACK）到达时，TCP再次读取时间，并取这两个时间的差值作为样本RTT。然后TCP计算估计RTT（EstimatedRTT）作为之前估计和这个新样本的加权平均值。<br>$$<br>\mathsf{EstimatedRTT} &#x3D; \alpha \times \mathsf{EstimatedRTT} + (1 - \alpha{}) \times \mathsf{SampleRTT}<br>$$<br>参数 alpha 用于平滑 EstimatedRTT，一般选择 0.8-0.9，不会导致有误差的数据带来较大偏移。TCP 会使用 EstimatedRTT 计算 timeout<br>$$<br>\mathsf{TimeOut &#x3D; 2} \times \mathsf{EstimatedRTT}<br>$$</p>
+<h3 id="Karn-Partridge算法"><a href="#Karn-Partridge算法" class="headerlink" title="Karn&#x2F;Partridge算法"></a>Karn&#x2F;Partridge算法</h3><p>几年后，人们发现这种简单方法存在一个明显的问题：一个ACK实际上并不确认一次传输，而是确认数据的接收。换句话说，每当一个段被重传，然后ACK到达发送方时，我们无法确定这个ACK应该关联第一次还是第二次重新传输的段。</p>
+<p>为了解决这个问题，Karn和Partridge提出了一个简单的解决方案，即Karn&#x2F;Partridge算法。根据这个算法，<strong>每当TCP重传一个段时，它就停止采集RTT的样本；</strong>它只对仅发送一次的段测量SampleRTT。</p>
+<p>但是，这个算法还包括对TCP超时机制的另一个改变。每次TCP重传时，它将下一个超时设置为最后一个超时的两倍，而不是基于上一个EstimatedRTT。也就是说，Karn和Partridge提出超时计算应该使用指数退避。使用指数退避的动机是，超时会导致重传，而重传的段不再对RTT估计的更新做出贡献。因此，这个想法是在声明数据包丢失时更加谨慎，而不是进入一个积极超时然后重传的可能循环中。</p>
+<h4 id="Jacobson-Karels算法"><a href="#Jacobson-Karels算法" class="headerlink" title="Jacobson&#x2F;Karels算法"></a>Jacobson&#x2F;Karels算法</h4><p>Karn&#x2F;Partridge算法改进了RTT估计，但并没有消除拥塞。1988年由Jacobson和Karels提出的拥塞控制机制包括（除了其他几个组件外）一种新的方式来决定何时超时和重传一个段。</p>
+<p>原始计算的主要问题在于它没有考虑样本RTT的方差。直观上，如果样本之间的变化很小，那么EstimatedRTT就可以被更可信地依赖，并且没有必要将这个估计乘以2来计算超时。另一方面，样本的大变化表明超时值不应该太紧密地与EstimatedRTT耦合。</p>
+<p>在新的方法中，发送方像以前一样测量新的SampleRTT。然后，它将这个新样本纳入超时计算中，如下所示：<br>$$<br>\mathsf{Difference &#x3D; SampleRTT - EstimatedRTT}<br>$$<br>$$<br>\mathsf{EstimatedRTT &#x3D; EstimatedRTT} + ( \delta \times \mathsf{Difference)}<br>$$</p>
+<p>$$<br>\mathsf{Deviation &#x3D; Deviation} + \delta \mathsf{(| Difference | - Deviation)}<br>$$</p>
+<p>其中，δ是一个介于0和1之间的参数。也就是说，我们计算RTT的加权移动平均值以及它的方差的加权移动平均值。然后，TCP根据EstimatedRTT和Deviation计算超时值，如下所示：<br>$$<br>\mathsf{TimeOut} &#x3D; \mu \times \mathsf{EstimatedRTT} + \phi \times \mathsf{Deviation}<br>$$<br>其中，μ基于经验通常设置为1，而φ设置为4。因此，当变化很小时，TimeOut接近EstimatedRTT；大的变化会使Deviation项支配计算。</p>
+<hr>
+<p>4.2-4.4 略</p>
+<h2 id="4-5-incremental-enhancements"><a href="#4-5-incremental-enhancements" class="headerlink" title="4.5 incremental enhancements"></a>4.5 incremental enhancements</h2><p>如果对TCP拥塞控制的研究教会了我们一件事，那就是这个问题的复杂性，以及你必须正确处理的许多细节。这只能通过一系列基于经验的增量改进来实现。以下提供了两个额外的例子。</p>
+<h3 id="SACK"><a href="#SACK" class="headerlink" title="SACK"></a>SACK</h3><blockquote>
+<p><a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/rfc2018">RFC 2018 - TCP Selective Acknowledgment Options (ietf.org)</a></p>
+</blockquote>
+<p>原始的TCP规范使用累积确认，这意味着接收方确认的是它接收到的最后一个数据包，该数据包在任何丢失的数据包之前。你可以想象接收方有一系列已接收的数据包，其中任何丢失的数据包都由接收字节流中的空白表示。直观地说，这种缺乏细节可能会限制发送方对数据包丢失的有效响应。解决这个问题的方法被称为选择性确认或SACK。SACK是TCP的另一个可选扩展，最初在Jacobson和Karels的早期工作之后不久被提出，但花了几年时间才获得认可，因为很难证明它会有益。</p>
+<p>没有SACK的情况下，发送方在接收到乱序的段时只有两种合理的策略。悲观策略对重复的ACK或超时响应，不仅重传明显丢失的段（即接收方缺失的第一个数据包），而且重传随后传输的所有段。实际上，悲观策略假设最坏的情况：所有这些段都丢失了。悲观策略的缺点是，它可能会不必要地重传第一次就成功接收的段。另一种策略是，对丢失信号（超时或重复ACK）响应，只重传触发该信号的段。这种乐观的方法假设最好的情况：只有一段丢失了。乐观策略的缺点是，当一系列连续的段丢失时，它的恢复速度非常慢，就像在拥塞时可能发生的那样。它之所以慢，是因为直到发送方接收到对之前段重传的ACK，才会发现每一段的丢失。这意味着它消耗了一个RTT来重传丢失系列中的每个段。有了SACK选项，发送方可以采用更好的策略：只重传填补已选择性确认的段之间的空白的段。</p>
+<p>SACK在连接开始时通过发送方告诉接收方它可以处理SACK选项来进行协商。当使用SACK选项时，接收方继续正常确认段——确认字段的含义没有改变——但它还扩展了头部，为任何乱序接收的块提供额外的确认。这允许发送方识别接收方存在的空白，并只重传缺失的段，而不是所有在丢失段之后传输的段。</p>
+<p>SACK被证明在单个RTT期间多个数据包被丢弃的情况下，特别是在TCP Reno中，可以改善性能，因为这是预期的（因为当只有一个数据包丢失时，累积ACK和SACK是相同的）。随着 BDP 的增加，这种情况变得更加可能，因为在一个给定的RTT中，管道中有更多的数据包。因此，SACK在1996年成为IETF提出的标准，是对TCP的一个及时的补充。</p>
+<h2 id="4-6-cubic"><a href="#4-6-cubic" class="headerlink" title="4.6 cubic"></a>4.6 cubic</h2><p>尝试找到向网络发送流量的适当速率是拥塞控制的核心，而且可能在任一方向上犯错误。发送太少的流量会导致网络未被充分利用，从而导致应用程序性能不佳。发送过多的流量则会导致网络拥塞，在最坏的情况下可能导致拥塞崩溃。在这两种失败模式之间，发送过多的流量通常是更严重的问题，因为拥塞可以迅速自我加剧，因为丢失的数据包会被重传。Tahoe、Reno和NewReno内置的AIMD（加性增加&#x2F;乘性减少）方法反映了这一点：缓慢增加窗口（加性增加）和快速减少窗口（乘性减少），努力在拥塞崩溃变得太严重之前退一步。但在高带宽延迟环境中，过于保守地探测拥塞的代价是相当高的，因为可能需要许多个RTT（往返时间）才能使“管道充满”。因此，这导致了对如何探测适当窗口大小的一些重新思考。</p>
+<p><strong>窗口有时应该快速增加，有时应该更慢地打开的想法</strong>。二进制增加拥塞控制（BIC）提出了这种想法。BIC不是像TCP Reno那样突然从指数窗口增长切换到线性，而是有效地对“正确”的窗口大小进行了二进制搜索。在数据包丢失后，拥塞窗口被乘性因子β减少。随着在新窗口大小下成功发送数据包的每次迭代，窗口增加到当前值和导致拥塞的旧值的中点。通过这种方式，<strong>它逐渐逼近旧值——首先快速然后缓慢。</strong></p>
+<p><img src="https://tcpcc.systemsapproach.org/_images/Slide9.png"></p>
+<blockquote>
+<p>Figure 28. <em>Generic cubic function illustrating the change in the congestion window as a function of time.</em></p>
+</blockquote>
+<p>在这一点上，如果没有拥塞，我们可以得出结论，网络条件已经改变，并且可以探测新的拥塞窗口大小。BIC首先缓慢然后更快速地这样做。你可以在 Figure 28中看到BIC增长窗口的大致形状，逼近（上一次丢失之前的拥塞窗口）然后超越它。</p>
+<p>BIC最终演变成一个称为CUBIC的新变种，今天它是与Linux一起分发的默认拥塞控制算法。CUBIC在多个方面改进了BIC，其中之一是使用由三次函数描述的平滑曲线，而不是BIC的分段线性函数。下面将对此进行更多讨论。</p>
+<p>CUBIC方法的另一个重要方面是，它<strong>根据自上次拥塞事件</strong>（例如，重复ACK的到来）以来经过的时间量来调整其拥塞窗口，而不仅仅是在收到ACK时（后者是RTT的函数）。<strong>这允许CUBIC在长RTT流与短RTT流竞争时表现得更公平，后者的ACK到达更频繁</strong>。这是一个与早期TCP版本有趣的不同之处，在早期版本中，短RTT的流在获得瓶颈链路的份额方面肯定有优势。</p>
+<p>三次函数在图28中显示，有三个阶段：增长放缓、平坦的平台、增加增长。在上一次拥塞事件之前达到的最大拥塞窗口大小是初始目标（表示为Wmax）。你可以看到窗口增长开始很快，但当接近Wmax时减慢；然后在接近Wmax时有一个谨慎增长的阶段，最后是探测新的可实现Wmax的阶段。</p>
+<p>具体来说，CUBIC将拥塞窗口（CongestionWindow）计算为自上次拥塞事件以来的时间（t）的函数:<br>$$<br>\mathsf{CongestionWindow(t)} &#x3D; \mathsf{C} \times \mathsf{(t-K)}^{3} + \mathsf{W}{max}<br>$$<br>其中<br>$$<br>\mathsf{K} &#x3D;  \sqrt[3]{\mathsf{W}{max} \times (1 - \beta{})&#x2F;\mathsf{C}}<br>$$<br>C是一个缩放常数，β是乘性减小时使用的因子。CUBIC将后者设置为0.7，而不是标准TCP使用的0.5。回顾 Figure 28，CUBIC通常被描述为在凹函数和凸函数之间转换（而标准TCP的 additive increase 阶段只是凸的）。</p>
+<p>有趣的是，CUBIC根据条件比早期的TCP变种更具侵略性或更保守。短RTT的TCP Reno流倾向于在获取瓶颈带宽方面非常有效，因此CUBIC包括一个“TCP友好”模式，目标是和TCP Reno一样积极。但在其他情况下，特别是在高带宽延迟网络中，CUBIC将能够获得更大的瓶颈带宽份额，因为CUBIC正在<strong>更快地增加其窗口大小</strong>。这让我们回到了第3.3节的讨论，即<strong>对现有算法的“公平性”是否是正确的设计目标</strong>。最终，CUBIC经过了广泛的分析，显示出在许多条件下的良好性能，没有造成不当的伤害，并已被广泛部署。</p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#%E3%80%8ATCP-CC-a-systems-approach%E3%80%8Bnotes-2-control-based-ccs"><span class="toc-number">1.</span> <span class="toc-text">《TCP CC: a systems approach》notes 2: control-based ccß</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#4-1-Timeout-calculation"><span class="toc-number">1.1.</span> <span class="toc-text">4.1 Timeout calculation</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#original-algorithm"><span class="toc-number">1.1.1.</span> <span class="toc-text">original algorithm</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Karn-Partridge%E7%AE%97%E6%B3%95"><span class="toc-number">1.1.2.</span> <span class="toc-text">Karn&#x2F;Partridge算法</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#Jacobson-Karels%E7%AE%97%E6%B3%95"><span class="toc-number">1.1.2.1.</span> <span class="toc-text">Jacobson&#x2F;Karels算法</span></a></li></ol></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-5-incremental-enhancements"><span class="toc-number">1.2.</span> <span class="toc-text">4.5 incremental enhancements</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#SACK"><span class="toc-number">1.2.1.</span> <span class="toc-text">SACK</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-6-cubic"><span class="toc-number">1.3.</span> <span class="toc-text">4.6 cubic</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&text=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&is_video=false&description=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=《TCP CC - a systems approach》notes (2) - loss-based cc&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&title=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&name=《TCP CC - a systems approach》notes (2) - loss-based cc&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-2/&t=《TCP CC - a systems approach》notes (2) - loss-based cc"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

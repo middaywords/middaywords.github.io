@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="trace skb drop我们知道，有很多方式可以 trace，我们想看下有哪些 drop 姿势 trace method ftrace  1234$ echo &gt; trace # 清空 trace$ echo function &gt; current_tracer # 修改 tracer 类型$ echo 1 &gt; options&#x2F;func_stack_trace # 启用打印调用">
+<meta property="og:type" content="article">
+<meta property="og:title" content="trace skb drop">
+<meta property="og:url" content="https://middaywords.github.io/2023/09/05/trace-skb-drop/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="trace skb drop我们知道，有很多方式可以 trace，我们想看下有哪些 drop 姿势 trace method ftrace  1234$ echo &gt; trace # 清空 trace$ echo function &gt; current_tracer # 修改 tracer 类型$ echo 1 &gt; options&#x2F;func_stack_trace # 启用打印调用">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-09-05T08:30:22.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.698Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="network">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>trace skb drop</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/09/17/perf-ring-buf/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/09/03/impl-of-linux-socket/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/09/05/trace-skb-drop/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&text=trace skb drop"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&is_video=false&description=trace skb drop"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=trace skb drop&body=Check out this article: https://middaywords.github.io/2023/09/05/trace-skb-drop/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&name=trace skb drop&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/09/05/trace-skb-drop/&t=trace skb drop"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#trace-skb-drop"><span class="toc-number">1.</span> <span class="toc-text">trace skb drop</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#trace-method"><span class="toc-number">1.1.</span> <span class="toc-text">trace method</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#drop-reason"><span class="toc-number">1.2.</span> <span class="toc-text">drop reason</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        trace skb drop
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-09-05T08:30:22.000Z" class="dt-published" itemprop="datePublished">2023-09-05</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="trace-skb-drop"><a href="#trace-skb-drop" class="headerlink" title="trace skb drop"></a>trace skb drop</h2><p>我们知道，有很多方式可以 trace，我们想看下有哪些 drop 姿势</p>
+<h3 id="trace-method"><a href="#trace-method" class="headerlink" title="trace method"></a>trace method</h3><ol>
+<li>ftrace</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">echo</span> &gt; trace <span class="comment"># 清空 trace</span></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">echo</span> <span class="keyword">function</span> &gt; current_tracer <span class="comment"># 修改 tracer 类型</span></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">echo</span> 1 &gt; options/func_stack_trace <span class="comment"># 启用打印调用栈选项</span></span></span><br><span class="line"><span class="meta prompt_">$ </span><span class="language-bash"><span class="built_in">echo</span> kfree_skbmem &gt; set_ftrace_filter <span class="comment"># 追踪 skb 释放函数</span></span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>Bpftrace</li>
+</ol>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">$ </span><span class="language-bash">bpftrace -e <span class="string">&#x27;kprobe:kfree_skbmem &#123; @[kstack] = count(); &#125;&#x27;</span></span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="drop-reason"><a href="#drop-reason" class="headerlink" title="drop reason"></a>drop reason</h3><p>在 5.17 kernel 之后有了 <code>kfree_skb_reason</code> 的支持才比较好，说明了 drop 的原因，这种一般代表不正常的 drop。还有正常接到包的 drop，这种一般直接调用 <code>__kfree_skb</code>。 <code>__kfree_skb</code>  底层调用 kfree_skbmem，还有 <code>__consume_stateless_skb</code>，这种是给 udp recvmsg 服务的，底层也是调用的 <code>kfree_skbmem</code>。总共关系呢，就是这样：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">kfree_skb_reason dev_kfree_skb_irq dev_kfree_skb_...</span><br><span class="line">     |</span><br><span class="line">  kfree_skb kfree_skb_partial ...</span><br><span class="line">     | </span><br><span class="line"> __kfree_skb      __consume_stateless_skb</span><br><span class="line">      |             |</span><br><span class="line">        kfree_skbmem</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>application 调用 tcp 的 recvmsg 的时候会释放</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line">---</span><br><span class="line"> =&gt; kfree_skbmem</span><br><span class="line"> =&gt; __kfree_skb</span><br><span class="line"> =&gt; tcp_recvmsg_locked</span><br><span class="line"> =&gt; tcp_recvmsg</span><br><span class="line"> =&gt; inet_recvmsg</span><br><span class="line"> =&gt; sock_recvmsg</span><br><span class="line"> =&gt; sock_read_iter</span><br><span class="line"> =&gt; new_sync_read</span><br><span class="line"> =&gt; vfs_read</span><br><span class="line"> =&gt; ksys_read</span><br><span class="line"> =&gt; __x64_sys_read</span><br><span class="line"> =&gt; do_syscall_64</span><br><span class="line"> =&gt; entry_SYSCALL_64_after_hwframe</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>调用 udp 的 recvmsg 的时候也释放</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">=&gt; kfree_skbmem</span><br><span class="line"> =&gt; __consume_stateless_skb</span><br><span class="line"> =&gt; skb_consume_udp</span><br><span class="line"> =&gt; udp_recvmsg</span><br><span class="line"> =&gt; inet_recvmsg</span><br><span class="line"> =&gt; sock_recvmsg</span><br><span class="line"> =&gt; __sys_recvfrom</span><br><span class="line"> =&gt; __x64_sys_recvfrom</span><br><span class="line"> =&gt; do_syscall_64</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>softirq  里收包的时候直接 clean_rtx_queue，清理发送包(不是 skb_clone 的那个)</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br></pre></td><td class="code"><pre><span class="line">=&gt; kfree_skbmem</span><br><span class="line"> =&gt; __kfree_skb</span><br><span class="line"> =&gt; tcp_clean_rtx_queue</span><br><span class="line"> =&gt; tcp_ack</span><br><span class="line"> =&gt; tcp_rcv_established</span><br><span class="line"> =&gt; tcp_v4_do_rcv</span><br><span class="line"> =&gt; tcp_v4_rcv</span><br><span class="line"> =&gt; ip_protocol_deliver_rcu</span><br><span class="line"> =&gt; ip_local_deliver_finish</span><br><span class="line"> =&gt; ip_local_deliver</span><br><span class="line"> =&gt; ip_rcv_finish</span><br><span class="line"> =&gt; ip_rcv</span><br><span class="line"> =&gt; __netif_receive_skb_one_core</span><br><span class="line"> =&gt; __netif_receive_skb</span><br><span class="line"> =&gt; process_backlog</span><br><span class="line"> =&gt; __napi_poll</span><br><span class="line"> =&gt; net_rx_action</span><br><span class="line"> =&gt; __do_softirq</span><br><span class="line"> =&gt; run_ksoftirqd</span><br><span class="line"> =&gt; smpboot_thread_fn</span><br><span class="line"> =&gt; kthread</span><br><span class="line"> =&gt; ret_from_fork</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>softirq 里面收包清理 skb 的</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">=&gt; __kfree_skb</span><br><span class="line">=&gt; tcp_data_queue</span><br><span class="line">=&gt; tcp_rcv_established</span><br><span class="line">=&gt; tcp_v4_do_rcv</span><br><span class="line">=&gt; tcp_v4_rcv</span><br><span class="line">=&gt; ip_protocol_deliver_rcu</span><br><span class="line">=&gt; ip_local_deliver_finish</span><br><span class="line">=&gt; ip_local_deliver</span><br><span class="line">=&gt; ip_rcv_finish</span><br><span class="line">=&gt; ip_rcv</span><br><span class="line">=&gt; __netif_receive_skb_one_core</span><br><span class="line">=&gt; __netif_receive_skb</span><br><span class="line">=&gt; process_backlog</span><br><span class="line">=&gt; __napi_poll</span><br><span class="line">=&gt; net_rx_action</span><br><span class="line">=&gt; __do_softirq</span><br><span class="line">=&gt; do_softirq</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>清理发送包(skb_clone的那个)</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">=&gt; kfree_skbmem</span><br><span class="line">=&gt; napi_consume_skb</span><br><span class="line">=&gt; free_old_xmit_skbs</span><br><span class="line">=&gt; virtnet_poll_tx</span><br><span class="line">=&gt; __napi_poll</span><br><span class="line">=&gt; net_rx_action</span><br><span class="line">=&gt; __do_softirq</span><br><span class="line">=&gt; irq_exit_rcu</span><br><span class="line">=&gt; common_interrupt</span><br><span class="line">=&gt; asm_common_interrupt</span><br><span class="line">=&gt; native_safe_halt</span><br><span class="line">=&gt; arch_cpu_idle</span><br><span class="line">=&gt; default_idle_call</span><br><span class="line">=&gt; do_idle</span><br><span class="line">=&gt; cpu_startup_entry</span><br><span class="line">=&gt; start_secondary</span><br><span class="line">=&gt; secondary_startup_64_no_verify</span><br></pre></td></tr></table></figure>
+
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#trace-skb-drop"><span class="toc-number">1.</span> <span class="toc-text">trace skb drop</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#trace-method"><span class="toc-number">1.1.</span> <span class="toc-text">trace method</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#drop-reason"><span class="toc-number">1.2.</span> <span class="toc-text">drop reason</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/09/05/trace-skb-drop/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&text=trace skb drop"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&is_video=false&description=trace skb drop"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=trace skb drop&body=Check out this article: https://middaywords.github.io/2023/09/05/trace-skb-drop/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&title=trace skb drop"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/09/05/trace-skb-drop/&name=trace skb drop&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/09/05/trace-skb-drop/&t=trace skb drop"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

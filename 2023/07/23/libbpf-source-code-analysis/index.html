@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="libbpf 源码解析 (1)这一篇主要是 overview，从总体上介绍 libbpf 的加载 prog&#x2F;map 等 object 的过程。（由于 map type, object type 过多，所以一篇文章也难以囊括所有，所以计划做成一个博客系列。） 这个系列的环境信息： OS: linux 5.15.0-26-generic libbpf version: commit f7eb">
+<meta property="og:type" content="article">
+<meta property="og:title" content="libbpf 源码解析 (1)">
+<meta property="og:url" content="https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="libbpf 源码解析 (1)这一篇主要是 overview，从总体上介绍 libbpf 的加载 prog&#x2F;map 等 object 的过程。（由于 map type, object type 过多，所以一篇文章也难以囊括所有，所以计划做成一个博客系列。） 这个系列的环境信息： OS: linux 5.15.0-26-generic libbpf version: commit f7eb">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-07-23T05:04:47.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.697Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="bpf">
+<meta property="article:tag" content="libbpf">
+<meta property="article:tag" content="pending">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>libbpf 源码解析 (1)</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/08/07/xdpdump/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/07/22/About-the-refreshed-blog/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&text=libbpf 源码解析 (1)"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&is_video=false&description=libbpf 源码解析 (1)"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=libbpf 源码解析 (1)&body=Check out this article: https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&name=libbpf 源码解析 (1)&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&t=libbpf 源码解析 (1)"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#libbpf-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-1"><span class="toc-number">1.</span> <span class="toc-text">libbpf 源码解析 (1)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-libbpf-%E7%BC%96%E8%AF%91%E5%8A%A0%E8%BD%BD-bpf-%E7%A8%8B%E5%BA%8F"><span class="toc-number">1.1.</span> <span class="toc-text">如何使用 libbpf 编译加载 bpf 程序</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        libbpf 源码解析 (1)
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-07-23T05:04:47.000Z" class="dt-published" itemprop="datePublished">2023-07-23</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/libbpf/" rel="tag">libbpf</a>, <a class="p-category" href="/tags/pending/" rel="tag">pending</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="libbpf-源码解析-1"><a href="#libbpf-源码解析-1" class="headerlink" title="libbpf 源码解析 (1)"></a>libbpf 源码解析 (1)</h2><p>这一篇主要是 overview，从总体上介绍 libbpf 的加载 prog&#x2F;map 等 object 的过程。（由于 map type, object type 过多，所以一篇文章也难以囊括所有，所以计划做成一个博客系列。）</p>
+<p>这个系列的环境信息：</p>
+<p>OS: linux 5.15.0-26-generic</p>
+<p>libbpf version: commit <a target="_blank" rel="noopener" href="https://github.com/libbpf/libbpf/commit/f7eb43b90f4c8882edf6354f8585094f8f3aade0">f7eb43b</a></p>
+<h3 id="如何使用-libbpf-编译加载-bpf-程序"><a href="#如何使用-libbpf-编译加载-bpf-程序" class="headerlink" title="如何使用 libbpf 编译加载 bpf 程序"></a>如何使用 libbpf 编译加载 bpf 程序</h3><p>深入源码之前，我们先简单说明下如何使用。</p>
+<p>总的来说，使用 libbpf 程序加载分为几个步骤 (refer to <a target="_blank" rel="noopener" href="https://github.com/lizrice/learning-ebpf/blob/main/chapter5/Makefile">Liz Rice’s book</a>)</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">TARGET = hello-buffer-config</span><br><span class="line">ARCH = <span class="variable">$(<span class="built_in">shell</span> uname -m | sed &#x27;s/x86_64/x86/&#x27; | sed &#x27;s/aarch64/arm64/&#x27;)</span></span><br><span class="line"></span><br><span class="line">BPF_OBJ = $&#123;TARGET:=.bpf.o&#125;</span><br><span class="line">USER_C = $&#123;TARGET:=.c&#125;</span><br><span class="line">USER_SKEL = $&#123;TARGET:=.skel.h&#125;</span><br><span class="line"></span><br><span class="line"><span class="section">all: <span class="variable">$(TARGET)</span> <span class="variable">$(BPF_OBJ)</span> find-map</span></span><br><span class="line"><span class="meta"><span class="keyword">.PHONY</span>: all </span></span><br><span class="line"></span><br><span class="line"><span class="variable">$(TARGET)</span>: <span class="variable">$(USER_C)</span> <span class="variable">$(USER_SKEL)</span> </span><br><span class="line">	gcc -Wall -o <span class="variable">$(TARGET)</span> <span class="variable">$(USER_C)</span> -L../libbpf/src -l:libbpf.a -lelf -lz</span><br><span class="line"></span><br><span class="line"><span class="section">%.bpf.o: %.bpf.c vmlinux.h</span></span><br><span class="line">	clang \</span><br><span class="line">	    -target bpf \</span><br><span class="line">        -D __TARGET_ARCH_<span class="variable">$(ARCH)</span> \</span><br><span class="line">	    -Wall \</span><br><span class="line">	    -O2 -g -o <span class="variable">$@</span> -c <span class="variable">$&lt;</span></span><br><span class="line">	llvm-strip -g <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="variable">$(USER_SKEL)</span>: <span class="variable">$(BPF_OBJ)</span></span><br><span class="line">	bpftool gen skeleton <span class="variable">$&lt;</span> &gt; <span class="variable">$@</span></span><br><span class="line"></span><br><span class="line"><span class="section">vmlinux.h:</span></span><br><span class="line">	bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h</span><br><span class="line"></span><br><span class="line"><span class="section">clean:</span></span><br><span class="line">	- rm <span class="variable">$(BPF_OBJ)</span></span><br><span class="line">	- rm <span class="variable">$(TARGET)</span></span><br><span class="line">	- rm find-map</span><br><span class="line"></span><br><span class="line"><span class="section">find-map: find-map.c</span></span><br><span class="line">	gcc -Wall -o find-map find-map.c -L../libbpf/src -l:libbpf.a -lelf -lz</span><br></pre></td></tr></table></figure>
+
+<p>以上 Makefile 将按照几个步骤进行</p>
+<ol>
+<li><p>使用 bpftool 根据系统的 <code>sys/kernel/btf/vmlinux</code> 生成 vmlinux.h。bpf 程序中头文件包含 vmlinux.h</p>
+</li>
+<li><p>使用 clang 编译 bpf 程序。生成 .bpf.o</p>
+</li>
+<li><p>使用 bpftool 将 .bpf.o 解析，生成 skel.h 头文件。</p>
+</li>
+<li><p>使用 gcc 和 libbpf 库，以及步骤 3 中生成的 skel 头文件，编译用户态 bpf 程序。</p>
+</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#libbpf-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90-1"><span class="toc-number">1.</span> <span class="toc-text">libbpf 源码解析 (1)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%A6%82%E4%BD%95%E4%BD%BF%E7%94%A8-libbpf-%E7%BC%96%E8%AF%91%E5%8A%A0%E8%BD%BD-bpf-%E7%A8%8B%E5%BA%8F"><span class="toc-number">1.1.</span> <span class="toc-text">如何使用 libbpf 编译加载 bpf 程序</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&text=libbpf 源码解析 (1)"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&is_video=false&description=libbpf 源码解析 (1)"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=libbpf 源码解析 (1)&body=Check out this article: https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&title=libbpf 源码解析 (1)"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&name=libbpf 源码解析 (1)&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/07/23/libbpf-source-code-analysis/&t=libbpf 源码解析 (1)"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

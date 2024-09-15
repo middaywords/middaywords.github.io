@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="sharing about bpf functionsbasically, for bpf functions we may refer to   bpf helper function Bpf2bpf call function tail call function  In this post, we may take a look at instruction level, about how">
+<meta property="og:type" content="article">
+<meta property="og:title" content="sharing about bpf functions">
+<meta property="og:url" content="https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="sharing about bpf functionsbasically, for bpf functions we may refer to   bpf helper function Bpf2bpf call function tail call function  In this post, we may take a look at instruction level, about how">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2024-08-01T10:39:09.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.694Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="bpf">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>sharing about bpf functions</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/09/06/2024-0906-deployment-dctcp/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/05/06/2024-0506-skb-timestamp/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&text=sharing about bpf functions"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&is_video=false&description=sharing about bpf functions"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=sharing about bpf functions&body=Check out this article: https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&name=sharing about bpf functions&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&t=sharing about bpf functions"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#sharing-about-bpf-functions"><span class="toc-number">1.</span> <span class="toc-text">sharing about bpf functions</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-helper-function"><span class="toc-number">1.1.</span> <span class="toc-text">bpf helper function</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#How-does-bpf-prog-know-where-the-helper-function-is"><span class="toc-number">1.1.1.</span> <span class="toc-text">How does bpf prog know where the helper function is?</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#How-is-helper-function-implemented-is-kernel"><span class="toc-number">1.1.2.</span> <span class="toc-text">How is helper function implemented is kernel</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf2bpf-function"><span class="toc-number">1.2.</span> <span class="toc-text">bpf2bpf function</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tail-call"><span class="toc-number">1.3.</span> <span class="toc-text">tail call</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#appendix"><span class="toc-number">1.4.</span> <span class="toc-text">appendix</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        sharing about bpf functions
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-08-01T10:39:09.000Z" class="dt-published" itemprop="datePublished">2024-08-01</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/linux/" rel="tag">linux</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="sharing-about-bpf-functions"><a href="#sharing-about-bpf-functions" class="headerlink" title="sharing about bpf functions"></a>sharing about bpf functions</h1><p>basically, for bpf functions we may refer to </p>
+<ul>
+<li>bpf helper function</li>
+<li>Bpf2bpf call function</li>
+<li>tail call function</li>
+</ul>
+<p>In this post, we may take a look at instruction level, about how they work</p>
+<h2 id="bpf-helper-function"><a href="#bpf-helper-function" class="headerlink" title="bpf helper function"></a>bpf helper function</h2><ul>
+<li><p>BPF helper function</p>
+</li>
+<li><ul>
+<li><p>Helper functions are used by eBPF programs to interact with the system, or with the context in which they work. For instance, they can be used to</p>
+</li>
+<li><ul>
+<li>print debugging messages</li>
+<li>get the time since the system was booted</li>
+<li>interact with eBPF maps</li>
+<li>manipulate network packets.</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p>docs: <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man7/bpf-helpers.7.html">https://man7.org/linux/man-pages/man7/bpf-helpers.7.html</a></p>
+<p>for helper fucntion, we mainly discuss two aspects:</p>
+<h3 id="How-does-bpf-prog-know-where-the-helper-function-is"><a href="#How-does-bpf-prog-know-where-the-helper-function-is" class="headerlink" title="How does bpf prog know where the helper function is?"></a>How does bpf prog know where the helper function is?</h3><p>we take the example below for reference.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line">// helper_func_ex1.bpf.c</span><br><span class="line">#include &lt;linux/bpf.h&gt;</span><br><span class="line">#include &lt;bpf/bpf_helpers.h&gt;</span><br><span class="line"></span><br><span class="line"></span><br><span class="line">#define __unused __attribute__((unused))</span><br><span class="line"></span><br><span class="line">char __license[] SEC(&quot;license&quot;) = &quot;GPL&quot;;</span><br><span class="line"></span><br><span class="line">SEC(&quot;tc&quot;)</span><br><span class="line">int helperfunc_entryfunc(struct __sk_buff *skb __unused)</span><br><span class="line">&#123;</span><br><span class="line">	bpf_printk(&quot;helper func called in tc\n&quot;);</span><br><span class="line">	return 0xaaaa;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>after we compiled it into bpf assembly code, it will be something like</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line">kanxu@ubuntu2204:~/Documents/learning-ebpf/chapter2/other-test$ make helper_func_ex1.bpf.o</span><br><span class="line">clang -g -O2 -Wall -Wextra -Werror -target bpf -c helper_func_ex1.bpf.c -o helper_func_ex1.bpf.o</span><br><span class="line"></span><br><span class="line">kanxu@ubuntu2204:~/Documents/learning-ebpf/chapter2/other-test$ llvm-objdump -S helper_func_ex1.bpf.o</span><br><span class="line"></span><br><span class="line">helper_func_ex1.bpf.o:	file format elf64-bpf</span><br><span class="line"></span><br><span class="line">Disassembly of section tc:</span><br><span class="line"></span><br><span class="line">0000000000000000 &lt;helperfunc_entryfunc&gt;:</span><br><span class="line">; 	bpf_printk(<span class="string">&quot;helper func called in tc\n&quot;</span>);</span><br><span class="line">       0:	18 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00	r1 = 0 ll</span><br><span class="line">       2:	b7 02 00 00 1a 00 00 00	r2 = 26</span><br><span class="line">       3:	85 00 00 00 06 00 00 00	call 6</span><br><span class="line">; 	<span class="built_in">return</span> 0xaaaa;</span><br><span class="line">       4:	b7 00 00 00 aa aa 00 00	r0 = 43690</span><br><span class="line">       5:	95 00 00 00 00 00 00 00	<span class="built_in">exit</span></span><br></pre></td></tr></table></figure>
+
+<p>we can see that the prog called <code>bpf_printk()</code> , which is a warpper for <code>bpf_trace_printk()</code>(more details in <a target="_blank" rel="noopener" href="https://nakryiko.com/posts/bpf-tips-printk/">https://nakryiko.com/posts/bpf-tips-printk/</a>). here we can see a <code>call 6</code> instruction in the helper, 6 is the helper function id.</p>
+<p>then we load it to kernel</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo bpftool prog load helper_func_ex1.bpf.o /sys/fs/bpf/helper</span><br><span class="line">➜  other-test git:(main) ✗ sudo bpftool prog dump xlated name helperfunc_entryfunc opcode</span><br><span class="line">int helperfunc_entryfunc(struct __sk_buff * skb):</span><br><span class="line">; bpf_printk(<span class="string">&quot;helper func called in tc\n&quot;</span>);</span><br><span class="line">   0: (18) r1 = map[<span class="built_in">id</span>:431][0]+0</span><br><span class="line">       18 21 00 00 af 01 00 00 00 00 00 00 00 00 00 00</span><br><span class="line">   2: (b7) r2 = 26</span><br><span class="line">       b7 02 00 00 1a 00 00 00</span><br><span class="line">   3: (85) call bpf_trace_printk<span class="comment">#-65696</span></span><br><span class="line">       85 00 00 00 60 ff fe ff</span><br><span class="line">; <span class="built_in">return</span> 0xaaaa;</span><br><span class="line">   4: (b7) r0 = 43690</span><br><span class="line">       b7 00 00 00 aa aa 00 00</span><br><span class="line">   5: (95) <span class="built_in">exit</span></span><br><span class="line">       95 00 00 00 00 00 00 00</span><br></pre></td></tr></table></figure>
+
+<p>we can find that the opcode for helper function call is changed, this is because the verifier did some relocation, the <code>imm</code> of bpf instruction is changed to an offset value to offset to <code>__bpf_call_base</code>, <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.10.2/source/kernel/bpf/verifier.c#L20551">https://elixir.bootlin.com/linux/v6.10.2/source/kernel/bpf/verifier.c#L20551</a></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">       3:	85 00 00 00 06 00 00 00	call 6</span><br><span class="line">-&gt;</span><br><span class="line">	3: (85) call bpf_trace_printk#-65696</span><br><span class="line">       85 00 00 00 60 ff fe ff</span><br></pre></td></tr></table></figure>
+
+<p>later in JIT part, it will translate the value to helper function address in kernel, <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.10.2/source/arch/x86/net/bpf_jit_comp.c#L2039">https://elixir.bootlin.com/linux/v6.10.2/source/arch/x86/net/bpf_jit_comp.c#L2039</a></p>
+<p>we can see some address from bpftool prog show</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo bpftool prog dump jited name helperfunc_entryfunc opcode</span><br><span class="line">int helperfunc_entryfunc(struct __sk_buff * skb):</span><br><span class="line">bpf_prog_e1a0d70c18e2a9cb_helperfunc_entryfunc:</span><br><span class="line">; bpf_printk(<span class="string">&quot;helper func called in tc\n&quot;</span>);</span><br><span class="line">   0:	nopl	(%rax,%rax)</span><br><span class="line">	0f 1f 44 00 00</span><br><span class="line">   5:	nop</span><br><span class="line">	66 90</span><br><span class="line">   7:	pushq	%rbp</span><br><span class="line">	55</span><br><span class="line">   8:	movq	%rsp, %rbp</span><br><span class="line">	48 89 e5</span><br><span class="line">   b:	movabsq	$-112556983896304, %rdi</span><br><span class="line">	48 bf 10 37 f5 48 a1 99 ff ff</span><br><span class="line">  15:	movl	<span class="variable">$26</span>, %esi</span><br><span class="line">	be 1a 00 00 00</span><br><span class="line">  1a:	callq	0xffffffffdb3c0fd8</span><br><span class="line">	e8 b9 0f 3c db</span><br><span class="line">; <span class="built_in">return</span> 0xaaaa;</span><br><span class="line">  1f:	movl	<span class="variable">$43690</span>, %eax</span><br><span class="line">	b8 aa aa 00 00</span><br><span class="line">  24:	leave</span><br><span class="line">	c9</span><br><span class="line">  25:	retq</span><br><span class="line">	c3</span><br></pre></td></tr></table></figure>
+
+<p>but actaully the addresss <code>0xffffffffdb3c0fd8</code> is not the real helper function address.</p>
+<p>To know the real address, we need to check kernel instructions.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo <span class="built_in">cat</span> /proc/kallsyms| <span class="built_in">tail</span></span><br><span class="line">ffffffffc076fa54 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0819124 t bpf_prog_c8b47a902f1cc68b	[bpf]</span><br><span class="line">ffffffffc088accc t bpf_prog_e3dbd137be8d6168	[bpf]</span><br><span class="line">ffffffffc08c2308 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc09344f8 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a4fbb0 t bpf_prog_ee0e253c78993a24	[bpf]</span><br><span class="line">ffffffffc0a51868 t bpf_prog_0ecd07b7b633809f	[bpf]</span><br><span class="line">ffffffffc0a572c8 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a59990 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a5bb38 t bpf_prog_e1a0d70c18e2a9cb_helperfunc_entryfunc	[bpf]</span><br><span class="line">➜  other-test git:(main) ✗ sudo gdb -q -c /proc/kcore -ex <span class="string">&#x27;x/10i 0xffffffffc0a5bb38&#x27;</span> -ex <span class="string">&#x27;quit&#x27;</span></span><br><span class="line">[New process 1]</span><br><span class="line">Core was generated by `BOOT_IMAGE=/boot/vmlinuz-5.15.92+ root=UUID=d34fb81b-584e-43ca-81cf-2582dc21e7b<span class="string">&#x27;.</span></span><br><span class="line"><span class="string">#0  0x0000000000000000 in ?? ()</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb38:	nopl   0x0(%rax,%rax,1)</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb3d:	xchg   %ax,%ax</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb3f:	push   %rbp</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb40:	mov    %rsp,%rbp</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb43:	movabs $0xffff99a148f53710,%rdi</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb4d:	mov    $0x1a,%esi</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb52:	call   0xffffffff9be1cb10</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb57:	mov    $0xaaaa,%eax</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb5c:	leave</span></span><br><span class="line"><span class="string">   0xffffffffc0a5bb5d:	ret</span></span><br></pre></td></tr></table></figure>
+
+<p><code>0xffffffff9be1cb10</code> is the real bpf_trace_printk helper function address in kernel.</p>
+<h3 id="How-is-helper-function-implemented-is-kernel"><a href="#How-is-helper-function-implemented-is-kernel" class="headerlink" title="How is helper function implemented is kernel"></a>How is helper function implemented is kernel</h3><p>The helper functions in the kernel which are dedicated to BPF (<strong>BPF_CALL_0()</strong> to <strong>BPF_CALL_5()</strong> functions) are specifically designed with this convention in mind.</p>
+<p>for bpf_trace_prink, it’s implemented as: <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.10.2/source/kernel/trace/bpf_trace.c#L375">https://elixir.bootlin.com/linux/v6.10.2/source/kernel/trace/bpf_trace.c#L375</a></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// /kernel/trace/bpf_trace.c</span></span><br><span class="line">BPF_CALL_5(bpf_trace_printk, <span class="type">char</span> *, fmt, u32, fmt_size, u64, arg1,</span><br><span class="line">	   u64, arg2, u64, arg3)</span><br><span class="line">&#123;</span><br><span class="line">	u64 args[MAX_TRACE_PRINTK_VARARGS] = &#123; arg1, arg2, arg3 &#125;;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_bprintf_data</span> <span class="title">data</span> =</span> &#123;</span><br><span class="line">		.get_bin_args	= <span class="literal">true</span>,</span><br><span class="line">		.get_buf	= <span class="literal">true</span>,</span><br><span class="line">	&#125;;</span><br><span class="line">	<span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">	ret = bpf_bprintf_prepare(fmt, fmt_size, args,</span><br><span class="line">				  MAX_TRACE_PRINTK_VARARGS, &amp;data);</span><br><span class="line">	<span class="keyword">if</span> (ret &lt; <span class="number">0</span>)</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line"></span><br><span class="line">	ret = bstr_printf(data.buf, MAX_BPRINTF_BUF, fmt, data.bin_args);</span><br><span class="line"></span><br><span class="line">	trace_bpf_trace_printk(data.buf);</span><br><span class="line"></span><br><span class="line">	bpf_bprintf_cleanup(&amp;data);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="bpf2bpf-function"><a href="#bpf2bpf-function" class="headerlink" title="bpf2bpf function"></a>bpf2bpf function</h2><p>we also take an example to see bpf2bpf function details:</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ cat sub_call_ex1.bpf.c</span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/bpf.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;bpf/bpf_helpers.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __unused __attribute__((unused))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __musttail __attribute__((musttail))</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __noinline __attribute__((noinline))</span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> __license[] SEC(<span class="string">&quot;license&quot;</span>) = <span class="string">&quot;GPL&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> __noinline</span><br><span class="line"><span class="type">int</span> <span class="title function_">sub_func</span><span class="params">(<span class="keyword">struct</span> __sk_buff *skb __unused)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0xf00d</span>;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">SEC(<span class="string">&quot;tc&quot;</span>)</span><br><span class="line"><span class="type">int</span> <span class="title function_">entry_prog</span><span class="params">(<span class="keyword">struct</span> __sk_buff *skb)</span></span><br><span class="line">&#123;</span><br><span class="line">	__musttail <span class="keyword">return</span> <span class="title function_">sub_func</span><span class="params">(skb)</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>then we compile it to see about its assembly</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ make sub_call_ex1.bpf.o</span><br><span class="line">clang -g -O2 -Wall -Wextra -Werror -target bpf -c sub_call_ex1.bpf.c -o sub_call_ex1.bpf.o</span><br><span class="line">➜  other-test git:(main) ✗ llvm-objdump -S sub_call_ex1.bpf.o</span><br><span class="line"></span><br><span class="line">sub_call_ex1.bpf.o:	file format elf64-bpf</span><br><span class="line"></span><br><span class="line">Disassembly of section .text:</span><br><span class="line"></span><br><span class="line">0000000000000000 &lt;sub_func&gt;:</span><br><span class="line">; 	<span class="built_in">return</span> 0xf00d;</span><br><span class="line">       0:	b7 00 00 00 0d f0 00 00	r0 = 61453</span><br><span class="line">       1:	95 00 00 00 00 00 00 00	<span class="built_in">exit</span></span><br><span class="line"></span><br><span class="line">Disassembly of section tc:</span><br><span class="line"></span><br><span class="line">0000000000000000 &lt;entry_prog&gt;:</span><br><span class="line">; 	__musttail <span class="built_in">return</span> sub_func(skb);</span><br><span class="line">       0:	85 10 00 00 ff ff ff ff	call -1</span><br><span class="line">       1:	95 00 00 00 00 00 00 00	<span class="built_in">exit</span></span><br></pre></td></tr></table></figure>
+
+<p>after we load it to kernel, we can see  they are loaded in one object and displayed as one single prog.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo bpftool prog load sub_call_ex1.bpf.o /sys/fs/bpf/subcall</span><br><span class="line">➜  other-test git:(main) ✗ sudo bpftool prog dump xlated name entry_prog</span><br><span class="line">int entry_prog(struct __sk_buff * skb):</span><br><span class="line">; __musttail <span class="built_in">return</span> sub_func(skb);</span><br><span class="line">   0: (85) call pc+1<span class="comment">#bpf_prog_a84919ecd878b8f3_sub_func</span></span><br><span class="line">   1: (95) <span class="built_in">exit</span></span><br><span class="line">int sub_func(struct __sk_buff * skb):</span><br><span class="line">; <span class="built_in">return</span> 0xf00d;</span><br><span class="line">   2: (b7) r0 = 61453</span><br><span class="line">   3: (95) <span class="built_in">exit</span></span><br></pre></td></tr></table></figure>
+
+<p>but we can see 3 new symbols in kernel symbols, actually, two entry prog addr are the same, i don’t know why there are two same symbol put here.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo cat /proc/kallsyms| tail</span><br><span class="line">ffffffffc08c2308 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc09344f8 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a4fbb0 t bpf_prog_ee0e253c78993a24	[bpf]</span><br><span class="line">ffffffffc0a51868 t bpf_prog_0ecd07b7b633809f	[bpf]</span><br><span class="line">ffffffffc0a572c8 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a59990 t bpf_prog_6deef7357e7b4530	[bpf]</span><br><span class="line">ffffffffc0a5bb38 t bpf_prog_e1a0d70c18e2a9cb_helperfunc_entryfunc	[bpf]</span><br><span class="line">ffffffffc0a40460 t bpf_prog_163e74e7188910f2_entry_prog	[bpf]</span><br><span class="line">ffffffffc0a473f8 t bpf_prog_a84919ecd878b8f3_sub_func	[bpf]</span><br><span class="line">ffffffffc0a40460 t bpf_prog_dd7a9984bfe90efd_entry_prog	[bpf]</span><br></pre></td></tr></table></figure>
+
+<p>the entry prog addr is <code>0xffffffffc0a40460</code>, and target prog addr is <code>0xffffffffc0a473f8</code>, we can see target prog is called in entry prog.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br></pre></td><td class="code"><pre><span class="line">➜  other-test git:(main) ✗ sudo gdb -q -c /proc/kcore -ex <span class="string">&#x27;x/10i 0xffffffffc0a40460&#x27;</span> -ex <span class="string">&#x27;quit&#x27;</span></span><br><span class="line">[New process 1]</span><br><span class="line">Core was generated by `BOOT_IMAGE=/boot/vmlinuz-5.15.92+ root=UUID=d34fb81b-584e-43ca-81cf-2582dc21e7b<span class="string">&#x27;.</span></span><br><span class="line"><span class="string">#0  0x0000000000000000 in ?? ()</span></span><br><span class="line"><span class="string">   0xffffffffc0a40460:	nopl   0x0(%rax,%rax,1)</span></span><br><span class="line"><span class="string">   0xffffffffc0a40465:	xchg   %ax,%ax</span></span><br><span class="line"><span class="string">   0xffffffffc0a40467:	push   %rbp</span></span><br><span class="line"><span class="string">   0xffffffffc0a40468:	mov    %rsp,%rbp</span></span><br><span class="line"><span class="string">   0xffffffffc0a4046b:	call   0xffffffffc0a473f8</span></span><br><span class="line"><span class="string">   0xffffffffc0a40470:	leave</span></span><br><span class="line"><span class="string">   0xffffffffc0a40471:	ret</span></span><br><span class="line"><span class="string">   0xffffffffc0a40472:	int3</span></span><br><span class="line"><span class="string">   0xffffffffc0a40473:	int3</span></span><br><span class="line"><span class="string">   0xffffffffc0a40474:	int3</span></span><br><span class="line"><span class="string">➜  other-test git:(main) ✗ sudo gdb -q -c /proc/kcore -ex &#x27;</span>x/10i 0xffffffffc0a473f8<span class="string">&#x27; -ex &#x27;</span>quit<span class="string">&#x27;</span></span><br><span class="line"><span class="string">[New process 1]</span></span><br><span class="line"><span class="string">Core was generated by `BOOT_IMAGE=/boot/vmlinuz-5.15.92+ root=UUID=d34fb81b-584e-43ca-81cf-2582dc21e7b&#x27;</span>.</span><br><span class="line"><span class="comment">#0  0x0000000000000000 in ?? ()</span></span><br><span class="line">   0xffffffffc0a473f8:	nopl   0x0(%rax,%rax,1)</span><br><span class="line">   0xffffffffc0a473fd:	xchg   %ax,%ax</span><br><span class="line">   0xffffffffc0a473ff:	push   %rbp</span><br><span class="line">   0xffffffffc0a47400:	mov    %rsp,%rbp</span><br><span class="line">   0xffffffffc0a47403:	mov    <span class="variable">$0xf00d</span>,%eax</span><br><span class="line">   0xffffffffc0a47408:	leave</span><br><span class="line">   0xffffffffc0a47409:	ret</span><br><span class="line">   0xffffffffc0a4740a:	int3</span><br><span class="line">   0xffffffffc0a4740b:	int3</span><br><span class="line">   0xffffffffc0a4740c:	int3</span><br></pre></td></tr></table></figure>
+
+<h2 id="tail-call"><a href="#tail-call" class="headerlink" title="tail call"></a>tail call</h2><h2 id="appendix"><a href="#appendix" class="headerlink" title="appendix"></a>appendix</h2><p>about Makefile for compiling each file</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"></span><br></pre></td></tr></table></figure>
+
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#sharing-about-bpf-functions"><span class="toc-number">1.</span> <span class="toc-text">sharing about bpf functions</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-helper-function"><span class="toc-number">1.1.</span> <span class="toc-text">bpf helper function</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#How-does-bpf-prog-know-where-the-helper-function-is"><span class="toc-number">1.1.1.</span> <span class="toc-text">How does bpf prog know where the helper function is?</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#How-is-helper-function-implemented-is-kernel"><span class="toc-number">1.1.2.</span> <span class="toc-text">How is helper function implemented is kernel</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf2bpf-function"><span class="toc-number">1.2.</span> <span class="toc-text">bpf2bpf function</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tail-call"><span class="toc-number">1.3.</span> <span class="toc-text">tail call</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#appendix"><span class="toc-number">1.4.</span> <span class="toc-text">appendix</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&text=sharing about bpf functions"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&is_video=false&description=sharing about bpf functions"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=sharing about bpf functions&body=Check out this article: https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&title=sharing about bpf functions"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&name=sharing about bpf functions&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/08/01/2024-0801-bpf-functions/&t=sharing about bpf functions"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/probberechts">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
