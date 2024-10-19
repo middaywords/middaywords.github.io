@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="linux tc 系列(1) - introduction之前写过一篇 Linux tc 的介绍，写的比较乱，最近做了次 sharing，把那些材料也放到这边来。 Basic viewTraffic Control (tc) is a traffic rate limiting, shaping, and policy control mechanism provided by the Linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux tc (1) - simple introduction">
+<meta property="og:url" content="https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="linux tc 系列(1) - introduction之前写过一篇 Linux tc 的介绍，写的比较乱，最近做了次 sharing，把那些材料也放到这边来。 Basic viewTraffic Control (tc) is a traffic rate limiting, shaping, and policy control mechanism provided by the Linux">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019180224017.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019180811331.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019181140756.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019181520666.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019182140806.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019185654709.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019190342882.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019190251677.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019190522993.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019190733894.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019190954476.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241019191039855.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/1596429-20200325230828640-700998853.png">
+<meta property="article:published_time" content="2024-10-19T09:56:21.000Z">
+<meta property="article:modified_time" content="2024-10-19T11:24:52.137Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20241019180224017.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>linux tc (1) - simple introduction</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/09/18/2024-0918-RFC-8985-RACK-TLP/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&text=linux tc (1) - simple introduction"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&is_video=false&description=linux tc (1) - simple introduction"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (1) - simple introduction&body=Check out this article: https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&name=linux tc (1) - simple introduction&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&t=linux tc (1) - simple introduction"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-1-introduction"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(1) - introduction</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Basic-view"><span class="toc-number">1.1.</span> <span class="toc-text">Basic view</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Queue-discipline-qdisc"><span class="toc-number">1.2.</span> <span class="toc-text">Queue discipline(qdisc)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#qdisc-categories"><span class="toc-number">1.2.1.</span> <span class="toc-text">qdisc categories</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Classless-tc-example-1-tbf"><span class="toc-number">1.2.2.</span> <span class="toc-text">Classless tc example 1: tbf</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Classless-tc-example-2-fq"><span class="toc-number">1.2.3.</span> <span class="toc-text">Classless tc example 2: fq</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#classful-qdisc-example-HTB-hierarchy-token-bucket"><span class="toc-number">1.2.4.</span> <span class="toc-text">classful qdisc example: HTB(hierarchy token bucket)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Ingress-qdisc-and-egress-qdisc"><span class="toc-number">1.3.</span> <span class="toc-text">Ingress qdisc and egress qdisc</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Small-practice-about-ingress-egress-qdisc"><span class="toc-number">1.4.</span> <span class="toc-text">Small practice about ingress&#x2F;egress qdisc</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.5.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        linux tc (1) - simple introduction
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-10-19T09:56:21.000Z" class="dt-published" itemprop="datePublished">2024-10-19</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="linux-tc-系列-1-introduction"><a href="#linux-tc-系列-1-introduction" class="headerlink" title="linux tc 系列(1) - introduction"></a>linux tc 系列(1) - introduction</h1><p>之前写过一篇 Linux tc 的介绍，写的比较乱，最近做了次 sharing，把那些材料也放到这边来。</p>
+<h2 id="Basic-view"><a href="#Basic-view" class="headerlink" title="Basic view"></a>Basic view</h2><p>Traffic Control (tc) is a traffic rate limiting, shaping, and policy control mechanism provided by the Linux kernel. (control the packet)</p>
+<ol>
+<li>Filter packets (similar to netfilter)</li>
+<li>Bandwidth limit (how fast packets are sent)</li>
+<li>Edit skb metainfo ( <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/tc-skbedit.8.html">tc-skbedit</a> )</li>
+<li>emulate network env ( add latency, loss rate to traffic, <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/tc-netem.8.html">tc-netem</a> )</li>
+</ol>
+<p>About its position in the network stack:</p>
+<ol>
+<li>in ingress, it’s between the hook point of tcpdump and before the processing of netfilter system.</li>
+<li>in egress, it’s processed after the netfilter system, in L2 processing logics, before the tcpdump egress hook point</li>
+</ol>
+<p><img src="/../figures/image-20241019180224017.png" alt="image-20241019180224017"></p>
+<p>Generally, linux TC packet processing workflow is different from netfitler, more flexible than netfilter.</p>
+<p>For netfitler, the kernel network stack is only do filtering and modifying, however, linux tc is scheduling the packets. so the netfilter will not change processing sequence of packets intentionally, while linux tc is aimed to achieve this.</p>
+<p>For netfilter, we have a bunch of incoming packets(in specific core), its outgoing packets won’t be changed.</p>
+<p><img src="/../figures/image-20241019180811331.png" alt="image-20241019180811331"></p>
+<p>While for linux tc, it has the capability to change the sequence of incoming packets. it processing logics is firstly call <code>tc-&gt;enqueue(skb1)</code> , then call <code>skb2 = tc-&gt;dequeue()</code> to get an <code>skb2</code>, then continue processing the <code>skb2</code>, here the <code>skb2</code> and <code>skb1</code> may be same or different, depending on linux tc queue types. When packets got enqueued or dequeued, the packets can dropped&#x2F;rescheduled&#x2F;modified&#x2F;delayed&#x2F;…, so the outgoing packet sequence can be different</p>
+<p><img src="/../figures/image-20241019181140756.png" alt="image-20241019181140756"></p>
+<h2 id="Queue-discipline-qdisc"><a href="#Queue-discipline-qdisc" class="headerlink" title="Queue discipline(qdisc)"></a>Queue discipline(qdisc)</h2><p>Qdisc stands for queue discipline</p>
+<ol>
+<li>there are many types of qdiscs in kernel, you could check out them in <a target="_blank" rel="noopener" href="https://man7.org/linux/man-pages/man8/tc.8.html#top_of_page">tc qdisc</a> </li>
+<li>Whenever the kernel needs to send a packet to an interface, it is <strong>enqueued</strong> to the root qdisc configured for that interface. </li>
+<li>Immediately afterwards, the kernel tries to <strong>get as many packets as possible</strong> from the qdisc(<strong>dequeue</strong>), for giving them to the network adaptor driver.</li>
+</ol>
+<h3 id="qdisc-categories"><a href="#qdisc-categories" class="headerlink" title="qdisc categories"></a>qdisc categories</h3><p>For qdisc, we can basically divide them into two categories,</p>
+<ul>
+<li><p>Classless qdisc</p>
+<ul>
+<li>Queueing discipline, treat all packets the same way</li>
+<li>Examples: Token Bucket Filter(tbf), pfifo_fast, fq-codel, fq, etc…</li>
+</ul>
+</li>
+<li><p>Classful qdisc</p>
+<ul>
+<li>Qdisc that contain classes, traffic in different classes can be treated in different way.</li>
+<li>Useful when applying different logics to different traffic</li>
+<li>Examples: Hierarchical Token Bucket(HTB), PRIO, etc…</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/image-20241019181520666.png" alt="image-20241019181520666"></p>
+<p>From the graphs above, we can see that the classless qdisc treat all packets the same way, while classful divide them into two classes.</p>
+<p>One thing to complement is that for each netdev in linux kernel network, there is one root qdisc attached to the netdev. the netdev will call linux tc logics by enqueuing the packets to the root qdisc and dequeuing from it as well.  For classful qdisc, root qdisc will call enqueue function of child qdiscs recuresively.</p>
+<h3 id="Classless-tc-example-1-tbf"><a href="#Classless-tc-example-1-tbf" class="headerlink" title="Classless tc example 1: tbf"></a>Classless tc example 1: tbf</h3><p>here is the command to replace the root qdisc to tbf qdisc.</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">tc qdisc add dev veth1 root tbf rate 100mbit burst 32mbit latency 400ms</span><br></pre></td></tr></table></figure>
+
+<p>for tbf qdisc workflow, this picture gives a detailed workflow.</p>
+<p><img src="/../figures/image-20241019182140806.png" alt="image-20241019182140806"></p>
+<p>In tbf qdisc, it will drop or let packet pass, it’s still in a FIFO way.</p>
+<h3 id="Classless-tc-example-2-fq"><a href="#Classless-tc-example-2-fq" class="headerlink" title="Classless tc example 2: fq"></a>Classless tc example 2: fq</h3><p>Linux fq can make packets out of original order by scheduling its sending time.</p>
+<p>When we set the root qdisc to mq+fq, we will see</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">root@tess-node-2b8qx-tess11:/sysroot/home/tess-admin# tc qdisc show dev eth0</span><br><span class="line">qdisc mq 8002: root </span><br><span class="line">qdisc fq 0: parent 8002:50 limit 10000p flow_limit 100p buckets 1024 orphan_mask 1023 quantum 3028b initial_quantum 15140b low_rate_threshold 550Kbit refill_delay 40ms timer_slack 10us horizon 10s horizon_drop </span><br><span class="line">qdisc fq 0: parent 8002:4f limit 10000p flow_limit 100p buckets 1024 orphan_mask 1023 quantum 3028b initial_quantum 15140b low_rate_threshold 550Kbit refill_delay 40ms timer_slack 10us horizon 10s horizon_drop </span><br></pre></td></tr></table></figure>
+
+<p>There is actually a parameter <code>flow_max_rate</code> , does not show up when it’s default value(UINT_MAX) in the output above. We commonly call this pacing rate in networking.</p>
+<p>All flow(e.g. TCP connection) will be enforced by an interval of <code>packet_len / flow_max_rate</code>. We can also set the flow pacing rate to a specific value, by setting the sock’s <code>sk_pacing_rate</code> field(call <code>setsockopt(SO_MAX_PACING_RATE, &lt;fq-rate&gt;)</code> syscall to set. Linux fq qdisc will check the field <code>sk_pacing_rate</code>, enforce the sock’s outgoing packets output at configured  pacing rate.</p>
+<p><img src="/../figures/image-20241019185654709.png" alt="image-20241019185654709"></p>
+<p>We can run a simple iperf example, to have a pacing TCP flow.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">iperf -c &lt;server-ip&gt; –fq-rate=10Gbps</span><br></pre></td></tr></table></figure>
+
+<p>For different flows, their pacing rate can be different, so the dequeue time is different, leading to non-FIFO behavior for the fq qdisc.</p>
+<p>By enable pacing, sometimes, we can see less retransmission for TCP flow, because the packet flow’s the order is less likely to be disturbed by RPS,RSS behavior, and less likely to cause burst traffic.</p>
+<h3 id="classful-qdisc-example-HTB-hierarchy-token-bucket"><a href="#classful-qdisc-example-HTB-hierarchy-token-bucket" class="headerlink" title="classful qdisc example: HTB(hierarchy token bucket)"></a>classful qdisc example: HTB(hierarchy token bucket)</h3><p>we have an example here to build a HTB qdisc:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line">INTERFACE=<span class="string">&quot;eth0&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Set IP addresses through environment variables</span></span><br><span class="line">IP1=<span class="variable">$&#123;IP_ADDRESS_1:-10.0.0.1&#125;</span></span><br><span class="line">IP2=<span class="variable">$&#123;IP_ADDRESS_2:-10.0.0.2&#125;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Load necessary module</span></span><br><span class="line">modprobe sch_htb</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create root queue discipline</span></span><br><span class="line">tc qdisc add dev <span class="variable">$INTERFACE</span> root handle 1: htb default 10</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create class for first IP with 1Gbit limit</span></span><br><span class="line">tc class add dev <span class="variable">$INTERFACE</span> parent 1: classid 1:1 htb rate 1Gbit ceil 1Gbit</span><br><span class="line">tc filter add dev <span class="variable">$INTERFACE</span> protocol ip parent 1:0 prio 1 u32 match ip dst <span class="variable">$IP1</span>/32 flowid 1:1</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create class for second IP with 2Gbit limit</span></span><br><span class="line">tc class add dev <span class="variable">$INTERFACE</span> parent 1: classid 1:2 htb rate 2Gbit ceil 2Gbit</span><br><span class="line">tc filter add dev <span class="variable">$INTERFACE</span> protocol ip parent 1:0 prio 1 u32 match ip dst <span class="variable">$IP2</span>/32 flowid 1:2</span><br></pre></td></tr></table></figure>
+
+<p>for this, it bulids the HTB qdisc in several steps:</p>
+<ol>
+<li>replace the qdisc</li>
+</ol>
+<p><img src="/../figures/image-20241019190342882.png" alt="image-20241019190342882"></p>
+<ol start="2">
+<li>create a HTB class</li>
+</ol>
+<p><img src="/../figures/image-20241019190251677.png" alt="image-20241019190251677"></p>
+<ol start="3">
+<li>create a filter, if the packet match that dst ip is IP1, then it goes to class 1:1. If packets do not match all the rule, it will goto the default class, if the default class do not exist, it will enter a FIFO queue maintained by HTB qdisc, which can be sent immediately without delay.</li>
+</ol>
+<p><img src="/../figures/image-20241019190522993.png" alt="image-20241019190522993"></p>
+<ol start="4">
+<li>moreover, there can be nested qdisc in HTB context</li>
+</ol>
+<p><img src="/../figures/image-20241019190733894.png" alt="image-20241019190733894"></p>
+<h2 id="Ingress-qdisc-and-egress-qdisc"><a href="#Ingress-qdisc-and-egress-qdisc" class="headerlink" title="Ingress qdisc and egress qdisc"></a>Ingress qdisc and egress qdisc</h2><p>In 5.15 kernel, the egress qdisc and ingress qdisc processing logics is different. To be specific, egress qdisc is like a filter + queue, while ingress qdisc is like a filter only.</p>
+<ul>
+<li>egress qdisc</li>
+</ul>
+<p><img src="/../figures/image-20241019190954476.png" alt="image-20241019190954476"></p>
+<ul>
+<li>ingress qdisc<ul>
+<li>ingress qdisc is a field called <code>mini_Qdisc</code> in kernel, it can be <code>clsact_sched_data</code> or <code>ingress_sched_data</code> internally in <code>mini_Qdisc</code>, it will decide it exec which filter logics.</li>
+<li>and there no queue logics like <code>__qdisc_run</code> in ingress qdisc.</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/image-20241019191039855.png" alt="image-20241019191039855"></p>
+<h2 id="Small-practice-about-ingress-egress-qdisc"><a href="#Small-practice-about-ingress-egress-qdisc" class="headerlink" title="Small practice about ingress&#x2F;egress qdisc"></a>Small practice about ingress&#x2F;egress qdisc</h2><p>in this directory, we have scripts for seting up two namespaces, connected by a veth device, described by the figure below:</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">------------------   ------------------ </span><br><span class="line">|                |   |                |</span><br><span class="line">| ns1       veth1-----veth2 - ns2     |</span><br><span class="line">|                |   |                |</span><br><span class="line">------------------   ------------------ </span><br></pre></td></tr></table></figure>
+
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># Create network namespaces</span></span><br><span class="line">sudo ip netns add ns1</span><br><span class="line">sudo ip netns add ns2</span><br><span class="line"></span><br><span class="line"><span class="comment"># Create a veth pair</span></span><br><span class="line">sudo ip <span class="built_in">link</span> add veth1 <span class="built_in">type</span> veth peer name veth2</span><br><span class="line"></span><br><span class="line"><span class="comment"># Attach the veth interfaces to the network namespaces</span></span><br><span class="line">sudo ip <span class="built_in">link</span> <span class="built_in">set</span> veth1 netns ns1</span><br><span class="line">sudo ip <span class="built_in">link</span> <span class="built_in">set</span> veth2 netns ns2</span><br><span class="line"></span><br><span class="line"><span class="comment"># Configure IP addresses for the veth interfaces within each namespace</span></span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns1 ip addr add 192.168.1.1/24 dev veth1</span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns2 ip addr add 192.168.1.2/24 dev veth2</span><br><span class="line"></span><br><span class="line"><span class="comment"># Bring up the loopback and veth interfaces inside each namespace</span></span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns1 ip <span class="built_in">link</span> <span class="built_in">set</span> lo up</span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns1 ip <span class="built_in">link</span> <span class="built_in">set</span> veth1 up</span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns2 ip <span class="built_in">link</span> <span class="built_in">set</span> lo up</span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns2 ip <span class="built_in">link</span> <span class="built_in">set</span> veth2 up</span><br><span class="line"></span><br><span class="line"><span class="comment"># Optionally, enable IP forwarding if needed</span></span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns1 sysctl -w net.ipv4.ip_forward=1</span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns2 sysctl -w net.ipv4.ip_forward=1</span><br><span class="line"></span><br><span class="line"><span class="comment"># Test connectivity (optional)</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Testing connectivity between ns1 and ns2...&quot;</span></span><br><span class="line">sudo ip netns <span class="built_in">exec</span> ns1 ping -c 3 192.168.1.2</span><br><span class="line"></span><br><span class="line"><span class="comment"># Notify the user of completion</span></span><br><span class="line"><span class="built_in">echo</span> <span class="string">&quot;Network namespaces and veth pair have been set up successfully.&quot;</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>Then we conduct simple and same bandwidth test using iperf in two different scenarios:</p>
+<ol>
+<li>Apply egress tbf(token bucket filter) qdisc to veth1</li>
+</ol>
+<p><strong>setup egress tbf qdisc</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">$ sudo tc qdisc show dev veth1</span><br><span class="line">qdisc noqueue 0: root refcnt 2</span><br><span class="line"><span class="comment"># add egress tbf to veth1 device</span></span><br><span class="line">$ sudo ip netns <span class="built_in">exec</span> ns1 tc qdisc add dev veth1 root tbf rate 100mbit burst 32mbit latency 400ms</span><br><span class="line">$ sudo tc qdisc show dev veth1</span><br><span class="line">qdisc tbf 8001: root refcnt 13 rate 100Mbit burst 4Mb lat 400ms</span><br></pre></td></tr></table></figure>
+
+<p>The bandwidth limit is set to 100Mbps.</p>
+<p><strong>bandwidth test(egress limit)</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">### in ns1</span></span><br><span class="line"><span class="comment"># start iperf3 server in ns2</span></span><br><span class="line">$ sudo ip netns <span class="built_in">exec</span> ns2 bash</span><br><span class="line">$ iperf3 -s</span><br><span class="line">-----------------------------------------------------------</span><br><span class="line">Server listening on 5201</span><br><span class="line">-----------------------------------------------------------</span><br><span class="line"></span><br><span class="line"><span class="comment">### in ns2</span></span><br><span class="line">$ sudo ip netns <span class="built_in">exec</span> ns1 bash</span><br><span class="line"><span class="comment"># start iperf3 client in ns1, and create one TCP connection.</span></span><br><span class="line">$ iperf3 -c 192.168.1.2</span><br><span class="line">Connecting to host 192.168.1.2, port 5201</span><br><span class="line">...</span><br><span class="line">- - - - - - - - - - - - - - - - - - - - - - - - -</span><br><span class="line">[ ID] Interval           Transfer     Bitrate         Retr</span><br><span class="line">[  5]   0.00-10.00  sec   120 MBytes   101 Mbits/sec    0             sender</span><br><span class="line">[  5]   0.00-10.01  sec   118 MBytes  98.8 Mbits/sec                  receiver</span><br></pre></td></tr></table></figure>
+
+<p>the throughput is about 98.8 Mbps and retransmission is 0.</p>
+<ol start="2">
+<li>Apply ingress tbf filter to veth2</li>
+</ol>
+<p><strong>setup ingress qdisc and tbf filter</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">$ tc filter show dev veth2</span><br><span class="line"><span class="comment"># result is empty</span></span><br><span class="line">$ tc qdisc add dev veth2 ingress <span class="comment"># create ingress qdisc</span></span><br><span class="line">$ tc qdisc show dev veth2</span><br><span class="line">qdisc noqueue 0: root refcnt 2</span><br><span class="line">qdisc ingress ffff: parent ffff:fff1 ----------------</span><br><span class="line"></span><br><span class="line">$ tc filter add dev veth2 ingress protocol all prio 50 u32 match u32 0 0 action police rate 100Mbit burst 100m mtu 65536 drop <span class="comment"># this adds a tbf filter at qdisc ingress</span></span><br><span class="line">$ tc filter show dev veth2 ingress</span><br><span class="line">filter protocol all pref 50 u32 chain 0</span><br><span class="line">filter protocol all pref 50 u32 chain 0 fh 800: ht divisor 1</span><br><span class="line">filter protocol all pref 50 u32 chain 0 fh 800::800 order 2048 key ht 800 bkt 0 terminal flowid ??? not_in_hw</span><br><span class="line">  match 00000000/00000000 at 0</span><br><span class="line">	action order 1:  police 0x1 rate 100Mbit burst 4Mb mtu 64Kb action drop overhead 0b</span><br><span class="line">	ref 1 <span class="built_in">bind</span> 1</span><br></pre></td></tr></table></figure>
+
+<p>The bandwidth limit is set to 100Mbps as well, some shared token bucket filter params(burst parameter) are set as similar as egress test case.</p>
+<p><strong>bandwidth test(ingress limit)</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">### in ns1</span></span><br><span class="line"><span class="comment"># start iperf3 server in ns2</span></span><br><span class="line">$ sudo ip netns <span class="built_in">exec</span> ns2 bash</span><br><span class="line">$ iperf3 -s</span><br><span class="line">-----------------------------------------------------------</span><br><span class="line">Server listening on 5201</span><br><span class="line">-----------------------------------------------------------</span><br><span class="line"></span><br><span class="line"><span class="comment">### in ns2</span></span><br><span class="line">$ sudo ip netns <span class="built_in">exec</span> ns1 bash</span><br><span class="line"><span class="comment"># start iperf3 client in ns1, and create one TCP connection.</span></span><br><span class="line">$ iperf3 -c 192.168.1.2</span><br><span class="line"></span><br><span class="line">/var/home/centos/proj/KernelTraining2024/homework/lesson_12<span class="comment"># iperf3 -c 192.168.1.2</span></span><br><span class="line">Connecting to host 192.168.1.2, port 5201</span><br><span class="line">...</span><br><span class="line">- - - - - - - - - - - - - - - - - - - - - - - - -</span><br><span class="line">[ ID] Interval           Transfer     Bitrate         Retr</span><br><span class="line">[  5]   0.00-10.00  sec   124 MBytes   104 Mbits/sec  5204             sender</span><br><span class="line">[  5]   0.00-10.00  sec   123 MBytes   103 Mbits/sec                  receiver</span><br></pre></td></tr></table></figure>
+
+<p>In this case, throughput is about 103Mbps, it’s similar, but the retransmission is 5204, much larger than egress bandwidth limit case.</p>
+<p>This result is because ingress qdisc is only a filter, once the throughput exceeds the limit, it will drop packet, it requires retransmision. However, for egress case, it has buffer in queue to stores the packet temporariy. avoid drops packet. meanwhile it’s not common to drop packet in egress case in host, since we have TSQ(you could refer to TCP small queue in another post in blog). </p>
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://people.netfilter.org/pablo/netdev0.1/papers/Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf">https://people.netfilter.org/pablo/netdev0.1/papers/Linux-Traffic-Control-Classifier-Action-Subsystem-Architecture.pdf</a> 这篇介绍传统 tc 框架，写的很详细</li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/ouyangxibao/articles/12571358.html">https://www.cnblogs.com/ouyangxibao/articles/12571358.html</a> 这篇讲数据结构之间的关系，非常清晰。（如侵删</li>
+</ol>
+<p><img src="/../figures/1596429-20200325230828640-700998853.png" alt="1596429-20200325230828640-700998853"></p>
+<ol start="3">
+<li>其他引用太多了…不一一列举了（主要是懒</li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-1-introduction"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(1) - introduction</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#Basic-view"><span class="toc-number">1.1.</span> <span class="toc-text">Basic view</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Queue-discipline-qdisc"><span class="toc-number">1.2.</span> <span class="toc-text">Queue discipline(qdisc)</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#qdisc-categories"><span class="toc-number">1.2.1.</span> <span class="toc-text">qdisc categories</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Classless-tc-example-1-tbf"><span class="toc-number">1.2.2.</span> <span class="toc-text">Classless tc example 1: tbf</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Classless-tc-example-2-fq"><span class="toc-number">1.2.3.</span> <span class="toc-text">Classless tc example 2: fq</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#classful-qdisc-example-HTB-hierarchy-token-bucket"><span class="toc-number">1.2.4.</span> <span class="toc-text">classful qdisc example: HTB(hierarchy token bucket)</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Ingress-qdisc-and-egress-qdisc"><span class="toc-number">1.3.</span> <span class="toc-text">Ingress qdisc and egress qdisc</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#Small-practice-about-ingress-egress-qdisc"><span class="toc-number">1.4.</span> <span class="toc-text">Small practice about ingress&#x2F;egress qdisc</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.5.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&text=linux tc (1) - simple introduction"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&is_video=false&description=linux tc (1) - simple introduction"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (1) - simple introduction&body=Check out this article: https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&title=linux tc (1) - simple introduction"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&name=linux tc (1) - simple introduction&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/10/19/2024-1019-linux-tc-simple-intro/&t=linux tc (1) - simple introduction"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
