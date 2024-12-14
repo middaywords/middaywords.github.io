@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="ovn cheatsheetfind openflow configuration from south to north:  In north bound db, it has mac addr and VM(logical network information)  12345678root:# ovn-nbctl showswitch be21f5e0-03de-41e6-8521-d1a8">
+<meta property="og:type" content="article">
+<meta property="og:title" content="OVN cheatsheet">
+<meta property="og:url" content="https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="ovn cheatsheetfind openflow configuration from south to north:  In north bound db, it has mac addr and VM(logical network information)  12345678root:# ovn-nbctl showswitch be21f5e0-03de-41e6-8521-d1a8">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20241213213953585.png">
+<meta property="article:published_time" content="2024-11-01T08:45:29.000Z">
+<meta property="article:modified_time" content="2024-12-13T14:05:18.127Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="linux">
+<meta property="article:tag" content="ovn">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20241213213953585.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>OVN cheatsheet</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/12/13/2024-1213-kprobe-demystify/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/10/19/2024-1019-linux-tc-simple-intro/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&text=OVN cheatsheet"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&is_video=false&description=OVN cheatsheet"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=OVN cheatsheet&body=Check out this article: https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&name=OVN cheatsheet&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&t=OVN cheatsheet"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ovn-cheatsheet"><span class="toc-number">1.</span> <span class="toc-text">ovn cheatsheet</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#A-case-to-understand-pod-inside-VM-routing"><span class="toc-number">2.</span> <span class="toc-text">A case to understand pod(inside VM) routing</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">3.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        OVN cheatsheet
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2024-11-01T08:45:29.000Z" class="dt-published" itemprop="datePublished">2024-11-01</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/linux/" rel="tag">linux</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>, <a class="p-category" href="/tags/ovn/" rel="tag">ovn</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="ovn-cheatsheet"><a href="#ovn-cheatsheet" class="headerlink" title="ovn cheatsheet"></a>ovn cheatsheet</h2><p>find openflow configuration from south to north:</p>
+<ul>
+<li>In north bound db, it has mac addr and VM(logical network information)</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root:# ovn-nbctl show</span><br><span class="line">switch be21f5e0-03de-41e6-8521-d1a85303c10f (sw-10.84.0.0-22)</span><br><span class="line">    port e990cd90-6337-407b-b820-d6bd502b1294</span><br><span class="line">        addresses: [&quot;74:db:d1:3a:b1:97 10.84.2.207&quot;]</span><br><span class="line">    port 478e96b2-5aa6-459a-a1e5-bc58dec7b876</span><br><span class="line">        addresses: [&quot;74:db:d1:7f:cc:d1 10.84.2.19&quot;]</span><br><span class="line">    port 19a5a0ca-d180-42dd-8649-95881c2b0e98</span><br><span class="line">        addresses: [&quot;74:db:d1:0b:99:43 10.84.2.243&quot;]</span><br></pre></td></tr></table></figure>
+
+<p><code>10.84.2.207</code> is IP of a VM node on OVN hypervisor.</p>
+<ul>
+<li>In south bound db, it shows info about Hypervisor. It’s about physical network information.</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root:# ovn-sbctl show | head</span><br><span class="line">Chassis &quot;4479d714-d827-4717-a045-cb7ef457ebcf&quot;</span><br><span class="line">    hostname: z7zqh-node</span><br><span class="line">    Encap stt</span><br><span class="line">        ip: &quot;10.179.206.43&quot;</span><br><span class="line">        options: &#123;csum=&quot;true&quot;&#125;</span><br><span class="line">    Port_Binding &quot;d0943c4d-fc57-4d25-afc8-bfeb0b75e30c&quot;</span><br><span class="line">    Port_Binding &quot;15b0fb0a-0605-4244-bb8e-ba3393639e53&quot;</span><br></pre></td></tr></table></figure>
+
+<p>the Hypervisior is Chassis “4479d714-d827-4717-a045-cb7ef457ebcf”, it will use <code>stt</code> protocol to encapsulate packets, it has two ports binded on this Hypervisor. One Port “04217bd3-ce16-449e-8fed-abb2a4815c30” binding to the hypervisor. And it’s connected to a VM on this Hypervisor.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">root@:# ovn-nbctl --no-leader-only show | grep d0943c4d-fc57-4d25-afc8-bfeb0b75e30c -C 3</span><br><span class="line">switch e18980e5-d2da-40de-85cc-0fbbfefadba1 (sw-10.9.0.0-22)</span><br><span class="line">...</span><br><span class="line">	port d0943c4d-fc57-4d25-afc8-bfeb0b75e30c</span><br><span class="line">        addresses: [&quot;74:db:d1:5e:64:d4 10.9.3.189&quot;]</span><br><span class="line">...</span><br></pre></td></tr></table></figure>
+
+<p>And the port connected to VM, has MAC addr <code>d0943c4d-fc57-4d25-afc8-bfeb0b75e30c</code> and IP addr <code>10.9.3.189</code></p>
+<ul>
+<li>in hypervisor ovs info, we can see some port&#x2F;addr information</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"># ovs-vsctl show | grep br-int -A 100</span><br><span class="line">		Bridge br-int</span><br><span class="line">        fail_mode: secure</span><br><span class="line">        datapath_type: system</span><br><span class="line">        Port ovn-a45bf0-1</span><br><span class="line">            Interface ovn-a45bf0-1</span><br><span class="line">                type: stt</span><br><span class="line">                options: &#123;csum=&quot;true&quot;, key=flow, local_ip=&quot;10.184.163.36&quot;, remote_ip=&quot;10.217.73.23&quot;&#125;</span><br><span class="line">        Port ovn-842a08-1</span><br><span class="line">            Interface ovn-842a08-1</span><br><span class="line">                type: stt</span><br><span class="line">                options: &#123;csum=&quot;true&quot;, key=flow, local_ip=&quot;10.184.163.36&quot;, remote_ip=&quot;10.179.224.71&quot;&#125;</span><br><span class="line">...</span><br><span class="line">        Port br-int</span><br><span class="line">            Interface br-int</span><br><span class="line">                type: internal</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>local ip is local hypervisor IP, while remote ip is remote hypervisor IP.</p>
+<h2 id="A-case-to-understand-pod-inside-VM-routing"><a href="#A-case-to-understand-pod-inside-VM-routing" class="headerlink" title="A case to understand pod(inside VM) routing"></a>A case to understand pod(inside VM) routing</h2><p>Architecture case:</p>
+<p><img src="/../figures/image-20241213213953585.png" alt="image-20241213213953585"></p>
+<p>these CIDR will be routed to VM 10.9.2.146.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># ovn-nbctl --no-leader-only lr-route-list dev-jr | grep 10.9.2.146 </span><br><span class="line">           10.9.52.144/28                10.9.2.146 dst-ip</span><br><span class="line">            10.9.143.0/28                10.9.2.146 dst-ip</span><br><span class="line">           10.9.193.96/28                10.9.2.146 dst-ip</span><br><span class="line">          10.9.202.192/28                10.9.2.146 dst-ip</span><br><span class="line">           10.9.207.64/28                10.9.2.146 dst-ip</span><br></pre></td></tr></table></figure>
+
+<p>check the Logical Port binding, the port <code>670c5500-4083-4322-84d7-d457b04b605c</code> is binded to VM IP <code>10.9.2.146</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"># ovn-nbctl --no-leader-only show  | grep 10.9.2.146 -C 3</span><br><span class="line">    port 23f2d07b-d052-4d9c-ae1f-44927c2156ff</span><br><span class="line">        addresses: [&quot;74:db:d1:29:c6:a3 10.9.1.31&quot;]</span><br><span class="line">    port 670c5500-4083-4322-84d7-d457b04b605c</span><br><span class="line">        addresses: [&quot;74:db:d1:bf:44:5a 10.9.2.146&quot;]</span><br><span class="line">    port 93db7faa-c8f2-422f-b48e-7621cb41c9fd</span><br><span class="line">        addresses: [&quot;74:db:d1:d4:c7:24 10.9.3.109&quot;]</span><br><span class="line">    port a0ad4811-2ff8-42cd-baab-7793867038ed</span><br></pre></td></tr></table></figure>
+
+<p>Found the Hypervisor&#x2F;Chassis, which has the port binded.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"># ovn-sbctl --no-leader-only show | grep 670c5500-4083-4322-84d7-d457b04b605c -C 3</span><br><span class="line">    Encap stt</span><br><span class="line">        ip: &quot;10.184.163.36&quot;</span><br><span class="line">        options: &#123;csum=&quot;true&quot;&#125;</span><br><span class="line">    Port_Binding &quot;670c5500-4083-4322-84d7-d457b04b605c&quot;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>Check the openflow rule in Hypervisor, it says all packets going to <code>10.9.52.144/255</code>, will be routed to <code>10.96.133.20</code> Hypervisor.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># ovs-dpctl dump-flows | grep 10.9.52</span><br><span class="line">recirc_id(0),in_port(5),eth(src=74:db:d1:2f:8b:ef,dst=74:db:d2:19:e7:6b),eth_type(0x0800),ipv4(src=10.32.0.0/255.224.0.0,dst=10.9.52.144/255.255.255.240,tos=0/0x3,ttl=63,frag=no), packets:5718, bytes:563542, used:0.713s, actions:set(tunnel(tun_id=0x10f3e000002,src=10.184.162.92,dst=10.96.133.20,ttl=64,tp_dst=7471,flags(df|csum|key))),set(eth(src=74:db:d2:19:e7:6b,dst=74:db:d1:30:9e:dd)),set(ipv4(ttl=62)),3</span><br></pre></td></tr></table></figure>
+
+<p>check the logical flow in southbound db, it says all packets going to 10.9.52.144&#x2F;28 will be routed to logical IP <code>10.215.91.233</code>, which is the dst VM.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># ovn-sbctl dump-flows dev-jr | grep 10.9.52.144</span><br><span class="line">  table=14(lr_in_ip_routing   ), priority=85   , match=(reg7 == 0 &amp;&amp; ip4.dst == 10.9.52.144/28), action=(ip.ttl--; reg8[0..15] = 0; reg0 = 10.215.91.233; reg1 = 10.215.88.1; eth.src = 74:db:d2:19:e7:6b; outport = &quot;lrp-dev-jr-to-sw-10.215.88.0-22&quot;; flags.loopback = 1; next;)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>The last two openflow rules info do not align with what’s shown in ovn-northd info. </p>
+<p>from nbctl shown info, the CIDR <code>10.9.52.144/28</code> will be routed to VM <code>10.9.2.146</code>, which is on the hypervisor of IP  <code>10.184.163.36</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"># ovn-nbctl --no-leader-only lr-route-list dev-jr | grep 10.9.2.146 </span><br><span class="line">           10.9.52.144/28                10.9.2.146 dst-ip</span><br></pre></td></tr></table></figure>
+
+<p>However, from the openflow rule, we can see from the hypervisor rule, the packets going to <code>10.9.52.144</code> will be routed to HV <code>10.96.133.20</code>, while it is expected to be <code>10.184.163.36</code> from nb-db info.</p>
+<p>from the sb dump flow results, in logical route aspect, the packets going to  <code>10.9.52.144</code> will be routed to VM IP <code>10.215.91.233</code>, while it is expected to be <code>10.9.2.146</code>.</p>
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ul>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/666424141">https://zhuanlan.zhihu.com/p/666424141</a> it helps understanding from practice, really good post(though in Chinese)</li>
+<li>Cheatsheet: <a target="_blank" rel="noopener" href="https://gist.github.com/odivlad/302d30e333ac2296850827bf4917913a">https://gist.github.com/odivlad/302d30e333ac2296850827bf4917913a</a></li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#ovn-cheatsheet"><span class="toc-number">1.</span> <span class="toc-text">ovn cheatsheet</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#A-case-to-understand-pod-inside-VM-routing"><span class="toc-number">2.</span> <span class="toc-text">A case to understand pod(inside VM) routing</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">3.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&text=OVN cheatsheet"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&is_video=false&description=OVN cheatsheet"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=OVN cheatsheet&body=Check out this article: https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&title=OVN cheatsheet"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&name=OVN cheatsheet&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/11/01/2024-1101-ovn-cheatsheet/&t=OVN cheatsheet"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2024
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
