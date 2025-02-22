@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="这篇文章聚焦于 rcu 底层实现的一些基本概念，不会具体谈 rcu 是如何使用的。 关于 rcu 基本使用，可以参考 https:&#x2F;&#x2F;lwn.net&#x2F;Articles&#x2F;262464&#x2F;, Paul E. McKenney 写的，rcu maintainer，写的很好。（尽管他写了很多文章，代码注释也写的很详细，但 rcu 还是挺难懂的。 另外，这篇文章关于源码的记录，是基于 kernel 6.8，图">
+<meta property="og:type" content="article">
+<meta property="og:title" content="rcu(1) - basics">
+<meta property="og:url" content="https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="这篇文章聚焦于 rcu 底层实现的一些基本概念，不会具体谈 rcu 是如何使用的。 关于 rcu 基本使用，可以参考 https:&#x2F;&#x2F;lwn.net&#x2F;Articles&#x2F;262464&#x2F;, Paul E. McKenney 写的，rcu maintainer，写的很好。（尽管他写了很多文章，代码注释也写的很详细，但 rcu 还是挺难懂的。 另外，这篇文章关于源码的记录，是基于 kernel 6.8，图">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250221180439760.png">
+<meta property="og:image" content="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/TreeLevel.svg">
+<meta property="og:image" content="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/BigTreePreemptRCUBHdyntickCB.svg">
+<meta property="og:image" content="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/blkd_task.svg">
+<meta property="og:image" content="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/nxtlist.svg">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231441826.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231547816.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231643425.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231726225.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231825035.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250222231859402.png">
+<meta property="article:published_time" content="2025-02-19T07:03:20.000Z">
+<meta property="article:modified_time" content="2025-02-22T15:22:56.086Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="kernel">
+<meta property="article:tag" content="rcu">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250221180439760.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>rcu(1) - basics</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2025/02/19/2025-0219-other-rcu-flavor/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/01/12/2025-0112-cfs-implementation/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&text=rcu(1) - basics"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&is_video=false&description=rcu(1) - basics"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rcu(1) - basics&body=Check out this article: https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&name=rcu(1) - basics&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&t=rcu(1) - basics"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-rcu-usage"><span class="toc-number">1.</span> <span class="toc-text">0. rcu usage</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-rcu-data-structures"><span class="toc-number">2.</span> <span class="toc-text">1. rcu data structures</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-rcu-state-%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 rcu_state 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-rcu-node-%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 rcu_node 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-rcu-segcblist-%E7%BB%93%E6%9E%84"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 rcu_segcblist 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-rcu-data-%E7%BB%93%E6%9E%84"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 rcu_data 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-5-rcu-head-%E7%BB%93%E6%9E%84"><span class="toc-number">2.5.</span> <span class="toc-text">1.5 rcu_head 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-6-task-struct-%E7%BB%93%E6%9E%84%E4%B8%AD%E7%9A%84-RCU-%E7%89%B9%E5%AE%9A%E5%AD%97%E6%AE%B5"><span class="toc-number">2.6.</span> <span class="toc-text">1.6 task_struct 结构中的 RCU 特定字段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-7-%E8%AE%BF%E9%97%AE%E5%87%BD%E6%95%B0"><span class="toc-number">2.7.</span> <span class="toc-text">1.7 访问函数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-rcu-%E8%AF%BB%E6%8E%A5%E5%8F%A3"><span class="toc-number">3.</span> <span class="toc-text">2. rcu 读接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-rcu-read-lock"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 rcu_read_lock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-rcu-read-unlock"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 rcu_read_unlock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-rcu-dereference"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 rcu_dereference()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-rcu-%E6%9B%B4%E6%96%B0%E6%8E%A5%E5%8F%A3"><span class="toc-number">4.</span> <span class="toc-text">3. rcu 更新接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-rcu-assign-pointer"><span class="toc-number">4.1.</span> <span class="toc-text">3.2 rcu_assign_pointer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-synchronize-rcu"><span class="toc-number">4.2.</span> <span class="toc-text">3.1 synchronize_rcu</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%AE%BD%E9%99%90%E6%9C%9F%E5%A4%84%E7%90%86"><span class="toc-number">5.</span> <span class="toc-text">4. 宽限期处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-rcu-gp-fqs-loop"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 rcu_gp_fqs_loop</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-rcu-gp-cleanup"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 rcu_gp_cleanup</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%9D%99%E6%AD%A2%E7%8A%B6%E6%80%81%E5%A4%84%E7%90%86"><span class="toc-number">6.</span> <span class="toc-text">5. 静止状态处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">7.</span> <span class="toc-text">6. 状态转换</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">8.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        rcu(1) - basics
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-02-19T07:03:20.000Z" class="dt-published" itemprop="datePublished">2025-02-19</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/kernel/" rel="tag">kernel</a>, <a class="p-category" href="/tags/rcu/" rel="tag">rcu</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>这篇文章聚焦于 rcu 底层实现的一些基本概念，不会具体谈 rcu 是如何使用的。</p>
+<p>关于 rcu 基本使用，可以参考 <a target="_blank" rel="noopener" href="https://lwn.net/Articles/262464/">https://lwn.net/Articles/262464/</a>, Paul E. McKenney 写的，rcu maintainer，写的很好。（尽管他写了很多文章，代码注释也写的很详细，但 rcu 还是挺难懂的。</p>
+<p>另外，这篇文章关于源码的记录，是基于 kernel 6.8，图片不是，因为图片基本上都是盗的… -_-||</p>
+<h2 id="0-rcu-usage"><a href="#0-rcu-usage" class="headerlink" title="0. rcu usage"></a>0. rcu usage</h2><blockquote>
+<p> 这一部分抄的 <a target="_blank" rel="noopener" href="https://www.cnblogs.com/LoyenWang/p/12681494.html%EF%BC%8C%E8%BF%99%E7%AF%87%E5%9B%BE%E6%96%87%E5%B9%B6%E8%8C%82%EF%BC%8C%E5%86%99%E7%9A%84%E5%BE%88%E5%A5%BD%EF%BC%8C%E5%A4%A7%E7%AF%87%E5%8F%82%E8%80%83%EF%BC%88%E4%BE%B5%E5%88%A0">https://www.cnblogs.com/LoyenWang/p/12681494.html，这篇图文并茂，写的很好，大篇参考（侵删</a></p>
+</blockquote>
+<p><code>RCU</code>的基本思想是将更新<code>Update</code>操作分为两个部分：1）<code>Removal</code>移除；2）<code>Reclamation</code>回收。<br>直白点来理解就是，临界资源被多个读者读取，写者在拷贝副本修改后进行更新时，第一步需要先把旧的临界资源数据移除（修改指针指向），第二步需要把旧的数据进行回收（比如<code>kfree</code>）。</p>
+<p>因此，从功能上分为以下三个基本的要素：<code>Reader/Updater/Reclaimer</code>，三者之间的交互如下图：</p>
+<p><img src="/../figures/image-20250221180439760.png" alt="img"></p>
+<ol>
+<li>Reader<ul>
+<li>使用<code>rcu_read_lock</code>和<code>rcu_read_unlock</code>来界定读者的临界区，访问受<code>RCU</code>保护的数据时，需要始终在该临界区域内访问；</li>
+<li>在访问受保护的数据之前，需要使用<code>rcu_dereference</code>来获取<code>RCU-protected</code>指针；</li>
+<li>当使用不可抢占的<code>RCU</code>时，<code>rcu_read_lock/rcu_read_unlock</code>之间不能使用可以睡眠的代码；</li>
+</ul>
+</li>
+<li>Updater<ul>
+<li>多个Updater更新数据时，需要使用互斥机制进行保护；</li>
+<li>Updater使用<code>rcu_assign_pointer</code>来移除旧的指针指向，指向更新后的临界资源；</li>
+<li>Updater使用<code>synchronize_rcu</code>或<code>call_rcu</code>来启动<code>Reclaimer</code>，对旧的临界资源进行回收，其中<code>synchronize_rcu</code>表示同步等待回收，<code>call_rcu</code>表示异步回收；</li>
+</ul>
+</li>
+<li>Reclaimer<ul>
+<li>Reclaimer回收的是旧的临界资源；</li>
+<li>为了确保没有读者正在访问要回收的临界资源，Reclaimer需要等待所有的读者退出临界区，这个等待的时间叫做宽限期（<code>Grace Period</code>）；</li>
+</ul>
+</li>
+</ol>
+<p>后面我们会从 rcu data structures, rcu 读接口，rcu 更新接口，rcu 宽限期处理等分析起源码实现。</p>
+<h2 id="1-rcu-data-structures"><a href="#1-rcu-data-structures" class="headerlink" title="1. rcu data structures"></a>1. rcu data structures</h2><blockquote>
+<p>这一部分参考 <a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/Data-Structures.html">https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/Data-Structures.html</a></p>
+</blockquote>
+<p>RCU 出于所有意图和目的是一个大型状态机，其数据结构以允许 RCU 读者极快地执行的方式维护状态，同时还以高效且极具可扩展性的方式处理更新程序请求的 RCU 宽限期 .<br>RCU updaters 的效率和可扩展性主要由组合树提供，如下所示：</p>
+<p><img src="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/TreeLevel.svg" alt="TreeLevel.svg"></p>
+<p>此图显示了一个包含“rcu_node”结构树的封闭“rcu_state”结构。 <code>rcu_node</code> 树的每个叶节点<strong>最多有 16 个</strong> <code>rcu_data</code> 结构与之关联，因此有 <code>NR_CPUS</code> 数量的 <code>rcu_data</code> 结构，<br> 如果需要，此结构会在启动时进行调整，以处理 <code>nr_cpu_ids</code> 远小于 <code>NR_CPUs</code> 的常见情况。 </p>
+<p>此组合树的目的是允许高效且可扩展地处理每个 CPU 事件，例如静态、dyntick-idle 转换和 CPU 热插拔操作。<br>静态由每个 CPU 的“rcu_data”结构记录，和其他事件由叶级 <code>rcu_node</code> 结构记录。<br>所有这些事件都在树的每一层进行组合，直到最后在树的根“rcu_node”结构中完成宽限期。<br>一旦每个 CPU（或者，在 <code>CONFIG_PREEMPT_RCU</code> 的情况下，任务）已经通过静止状态，就可以在根节点完成宽限期。 一旦宽限期结束，该事实的记录就会沿着树向下传播。</p>
+<p>如果您的系统有超过 1,024 个 CPU（或在 32 位系统上超过 512 个 CPU），那么 RCU 会自动向树中添加更多层级。 例如，如果你足够疯狂地构建一个具有 65,536 个 CPU 的 64 位系统，RCU 将配置<br><code>rcu_node</code> 树如上图所示。</p>
+<p>这种多级组合树使我们能够获得分区的大部分性能和可伸缩性优势，即使 RCU 宽限期检测本质上是一个全局操作。 这里的技巧是，只有最后一个 CPU 将静止状态报告给给定的 <code>rcu_node</code> 结构需要前<br>进到树的下一层的 <code>rcu_node</code> 结构。 这意味着在叶级 <code>rcu_node</code> 结构中，16 个访问中只有一个会在树上进行。 对于内部的 <code>rcu_node</code> 结构，情况更加极端：64 次访问中只有一次会在树上进<br>行。 因为绝大多数 CPU 没有在树中向上移动，所以锁争用在树中大致保持不变。 无论系统中有多少个 CPU，每个宽限期最多 64 个静态报告将一直进行到根 <code>rcu_node</code> 结构，从而确保该根 <code>rcu_node</code><br>结构上的锁争用仍然处于可接受的低水平。</p>
+<p>RCU updaters 通过注册 RCU 回调来等待正常的宽限期，可以直接通过 <code>call_rcu()</code> 或间接通过 <code>synchronize_rcu()</code> 或其朋友函数。 RCU 回调由 <code>rcu_head</code> 结构表示，它们在等待宽限期结束时在<br><code>rcu_data</code> 结构上排队，如下图所示：</p>
+<p><img src="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/BigTreePreemptRCUBHdyntickCB.svg" alt="BigTreePreemptRCUBHdyntickCB.svg"></p>
+<p>此图显示了 <code>TREE_RCU</code> 和 <code>PREEMPT_RCU</code> 的主要数据结构之间的关系。 较小的数据结构将与使用它们的算法一起引入。</p>
+<p>注意上图中的每个数据结构都有自己的同步：</p>
+<ul>
+<li>每个 <code>rcu_state</code> 结构都有一个锁和一个互斥量，一些字段由相应的根 <code>rcu_node</code> 结构的锁保护。</li>
+<li>每个 <code>rcu_node</code> 结构都有一个自旋锁。</li>
+<li><code>rcu_data</code> 中的字段是相应 CPU 私有的，尽管有一些字段可以被其他 CPU 读取和写入。</li>
+</ul>
+<p>重要的是要注意，不同的数据结构在任何给定时间对 RCU 的状态可能有非常不同的想法。 举一个例子，对给定 RCU 宽限期开始或结束的意识通过数据结构缓慢传播。 这种缓慢的传播对于 RCU 具有良好<br>的读取端性能是绝对必要的。 如果您觉得这种割裂的实现方式很陌生，一个有用的技巧是将这些数据结构的每个实例都视为不同的人，每个人对现实的看法通常略有不同。</p>
+<p>这些数据结构的一般作用如下：</p>
+<ul>
+<li><p><code>rcu_state</code>：该结构形成<code>rcu_node</code>和<code>rcu_data</code>结构之间的互连，跟踪宽限期，作为CPU热插拔事件孤立的回调的短期存储库，维护<code>rcu_barrier()</code> 状态，跟踪加速宽限期状态，并在宽限<br>期延长太长时维护用于强制静态状态的状态，</p>
+</li>
+<li><p><code>rcu_node</code>：这个结构形成了组合树，它将静止状态信息从叶子传播到根，并且还将宽限期信息从根传播到叶子。它提供宽限期状态的本地副本，以允许以同步方式访问此信息，而不会受到全局锁定强加的<br>可伸缩性限制。 在 <code>CONFIG_PREEMPT_RCU</code> 内核中，它管理在当前 RCU 读端临界区中阻塞的任务列表。 在 <code>CONFIG_PREEMPT_RCU</code> 和 <code>CONFIG_RCU_BOOST</code> 中，它管理每 <code>rcu_node</code> 的优先级提<br>升内核线程（kthreads）和状态。 最后，它记录 CPU 热插拔状态以确定在给定的宽限期内应忽略哪些 CPU。</p>
+</li>
+<li><p><code>rcu_data</code>：这个每 CPU 的结构是静态检测和 RCU 回调排队的重点。 它还跟踪它与相应的叶<code>rcu_node</code>结构的关系，以允许更有效地将静态状态传播到<code>rcu_node</code>组合树上。 与 rcu_node 结构<br>一样，它提供了宽限期信息的本地副本，以允许从相应的 CPU 中访问此信息，而不需要任何同步操作。 最后，该结构记录了相应 CPU 过去的 dyntick-idle 状态并跟踪统计信息。</p>
+</li>
+<li><p><code>rcu_head</code>：这个结构代表RCU回调，并且是RCU用户分配和管理的唯一结构。 <code>rcu_head</code> 结构通常嵌入在受 RCU 保护的数据结构中。</p>
+</li>
+</ul>
+<h3 id="1-1-rcu-state-结构"><a href="#1-1-rcu-state-结构" class="headerlink" title="1.1 rcu_state 结构"></a>1.1 rcu_state 结构</h3><p><code>rcu_state</code> 结构是表示系统中 RCU 状态的基本结构。 这个结构形成了 <code>rcu_node</code> 和 <code>rcu_data</code> 结构之间的互连，跟踪宽限期，包含用于与 CPU 热插拔事件同步的锁，并维护用于在宽限期太长时强制进入静止状态的状态。</p>
+<ul>
+<li>与 rcu_node 和 rcu_data 结构的关系</li>
+</ul>
+<p><code>rcu_state</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_state</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> <span class="title">node</span>[<span class="title">NUM_RCU_NODES</span>];</span>	<span class="comment">/* Hierarchy. */</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> *<span class="title">level</span>[<span class="title">RCU_NUM_LVLS</span> + 1];</span></span><br><span class="line">  <span class="comment">/* Hierarchy levels (+1 to */</span></span><br><span class="line">	<span class="comment">/*  shut bogus gcc warning) */</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>宽限期跟踪</li>
+</ul>
+<p><code>rcu_state</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_state</span> &#123;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> gp_seq ____cacheline_internodealigned_in_smp;</span><br><span class="line">	<span class="comment">/* Grace-period sequence #. */</span></span><br><span class="line"></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>RCU 宽限期是被编号的，<code>-&gt;gp_seq</code> 字段包含当前宽限期序列号。 低两位是当前宽限期的状态，可以为 0 表示尚未开始，也可以为 1 表示进行中。换句话说，如果 <code>-&gt;gp_seq</code> 的低两位为零，则 RCU 空闲。<br>底部两位中的任何其他值都表示有东西坏了。 该字段受根 <code>rcu_node</code> 结构的 <code>-&gt;lock</code> 字段保护。</p>
+<p><code>rcu_node</code> 和 <code>rcu_data</code> 结构中也有 <code>-&gt;gp_seq</code> 字段。 <code>rcu_state</code> 结构中的字段表示最新值，并且比较其他结构中的字段，以便以分布式方式检测宽限期的开始和结束。<br>值从 <code>rcu_state</code> 流向 <code>rcu_node</code>（从根到叶的树）到 <code>rcu_data</code>。</p>
+<p><code>rcu_state</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_state</span> &#123;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> gp_max;<span class="comment">/* Maximum GP duration in jiffies*/</span></span><br><span class="line">	<span class="type">const</span> <span class="type">char</span> *name;<span class="comment">/* Name of structure. */</span></span><br><span class="line">	<span class="type">char</span> abbr;<span class="comment">/* Abbreviated name. */</span></span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;gp_max</code> 字段以 jiffies 为单位跟踪最长宽限期的持续时间。 它受根 <code>rcu_node</code> 的 <code>-&gt;lock</code> 保护。</p>
+<p><code>-&gt;name</code> 和 <code>-&gt;abbr</code> 字段区分抢占式 RCU（“rcu_preempt”和“p”）和非抢占式 RCU（“rcu_sched”和“s”）。 这些字段用于诊断和跟踪目的。</p>
+<h3 id="1-2-rcu-node-结构"><a href="#1-2-rcu-node-结构" class="headerlink" title="1.2 rcu_node 结构"></a>1.2 rcu_node 结构</h3><p><code>rcu_node</code> 结构形成了组合树，它将静止状态信息从叶子传播到根，并将宽限期信息从根向下传播到叶子。 它们提供宽限期状态的本地副本，以允许以同步方式访问此信息，而不会受到全局锁定强加的可伸缩性限制。 在 <code>CONFIG_PREEMPT_RCU</code> 内核中，它们管理在当前 RCU 读端临界区中阻塞的任务列表。在 <code>CONFIG_PREEMPT_RCU</code> 和 <code>CONFIG_RCU_BOOST</code> 中，它们管理每个 <code>rcu_node</code> 优先级提升内核线程（kthreads）和状态。 最后，他们记录 CPU 热插拔状态以确定在给定的宽限期内应忽略哪些 CPU。</p>
+<ul>
+<li>连接到组合树</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> *<span class="title">parent</span>;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> grpmask;	<span class="comment">/* Mask to apply to parent qsmask. */</span></span><br><span class="line">				<span class="comment">/*  Only one bit will be set in this mask. */</span></span><br><span class="line">	<span class="type">int</span>	grplo;		<span class="comment">/* lowest-numbered CPU here. */</span></span><br><span class="line">	<span class="type">int</span>	grphi;		<span class="comment">/* highest-numbered CPU here. */</span></span><br><span class="line">	u8	grpnum;		<span class="comment">/* group number for next level up. */</span></span><br><span class="line">	u8	level;		<span class="comment">/* root is at level 0. */</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;parent</code> 指针引用树中上一层的<code>rcu_node</code>，对于根<code>rcu_node</code> 为<code>NULL</code>。 RCU 实现大量使用此字段将静止状态推到树上。 <code>-&gt;level</code> 字段给出了树中的级别，根为零级，<br>其子级为一级，依此类推。 <code>-&gt;grpnum</code> 字段给出了该节点在其父节点的子节点中的位置，因此该数字在 32 位系统上可以介于 0 到 31 之间，在 64 位系统上可以介于 0 到 63 之间。<br><code>-&gt;level</code> 和 <code>-&gt;grpnum</code> 字段仅在初始化和tracing期间使用。 <code>-&gt;grpmask</code> 字段是 <code>-&gt;grpnum</code> 的对应位掩码，因此总是只有一位设置。此掩码用于清除其父级位掩码中与此<br><code>rcu_node</code> 结构对应的位，稍后将对此进行描述。 最后，<code>-&gt;grplo</code> 和<code>-&gt;grphi</code> 字段分别包含此 <code>rcu_node</code> 结构服务的编号最低和最高的 CPU。</p>
+<ul>
+<li>同步</li>
+</ul>
+<p><code>rcu_node</code> 结构的这个字段声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> &#123;</span></span><br><span class="line">	<span class="type">raw_spinlock_t</span> __private lock;</span><br><span class="line">  <span class="comment">/* Root rcu_node&#x27;s lock protects */</span></span><br><span class="line">	<span class="comment">/*  some rcu_state fields as well as */</span></span><br><span class="line">	<span class="comment">/*  following. */</span></span><br></pre></td></tr></table></figure>
+
+<p>除非另有说明，否则此字段用于保护此结构中的其余字段。 也就是说，出于跟踪目的，无需锁定即可访问此结构中的所有字段。</p>
+<ul>
+<li>宽限期跟踪</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> &#123;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> gp_seq;	<span class="comment">/* Track rsp-&gt;gp_seq. */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> gp_seq_needed; <span class="comment">/* Track furthest future GP request. */</span></span><br></pre></td></tr></table></figure>
+
+<p><code>rcu_node</code> 结构的<code>-&gt;gp_seq</code> 字段是<code>rcu_state</code> 结构中同名字段的对应项。 他们每个人都可能落后于他们的 <code>rcu_state</code> 一步。 如果给定 <code>rcu_node</code> 结构的 <code>-&gt;gp_seq</code> 字段的底部两位为零，则此 <code>rcu_node</code> 结构认为 RCU 空闲。</p>
+<p>每个“rcu_node”结构的“&gt;gp_seq”字段在每个宽限期的开始和结束时更新。</p>
+<p><code>-&gt;gp_seq_needed</code> 字段记录相应 <code>rcu_node</code> 结构看到的最远的未来宽限期请求。 当 <code>-&gt;gp_seq</code> 字段的值等于或超过 <code>-&gt;gp_seq_needed</code> 字段的值时，请求被认为已完成。</p>
+<ul>
+<li>静止状态的跟踪</li>
+</ul>
+<p>这些字段管理静态在组合树上的传播。<code>rcu_node</code> 结构的这一部分具有如下字段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">unsigned</span> <span class="type">long</span> qsmask;	<span class="comment">/* CPUs or groups that need to switch in */</span></span><br><span class="line"> <span class="comment">/*  order for current grace period to proceed.*/</span></span><br><span class="line"> <span class="comment">/*  In leaf rcu_node, each bit corresponds to */</span></span><br><span class="line"> <span class="comment">/*  an rcu_data structure, otherwise, each */</span></span><br><span class="line"> <span class="comment">/*  bit corresponds to a child rcu_node */</span></span><br><span class="line"> <span class="comment">/*  structure. */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> qsmaskinit;</span><br><span class="line"> <span class="comment">/* Per-GP initial value for qsmask. */</span></span><br><span class="line"> <span class="comment">/*  Initialized from -&gt;qsmaskinitnext at the */</span></span><br><span class="line"> <span class="comment">/*  beginning of each grace period. */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> expmask;	<span class="comment">/* CPUs or groups that need to check in */</span></span><br><span class="line"> <span class="comment">/*  to allow the current expedited GP */</span></span><br><span class="line"> <span class="comment">/*  to complete. */</span></span><br><span class="line"><span class="type">unsigned</span> <span class="type">long</span> expmaskinit;</span><br><span class="line"> <span class="comment">/* Per-GP initial values for expmask. */</span></span><br><span class="line"> <span class="comment">/*  Initialized from -&gt;expmaskinitnext at the */</span></span><br><span class="line"> <span class="comment">/*  beginning of each expedited GP. */</span></span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;qsmask</code> 字段跟踪此 <code>rcu_node</code> 结构的哪些子结构仍需要报告当前正常宽限期的静止状态。 这样的子结构在其相应位中的值为 1。 请注意，叶 <code>rcu_node</code> 结构应该被视为具有 <code>rcu_data</code>结构作为它们的子结构。 类似地，<code>-&gt;expmask</code> 字段跟踪此 <code>rcu_node</code> 结构的哪些子结构仍需要报告当前加速宽限期的静止状态。 加速宽限期与正常宽限期具有相同的概念属性，但加速实施接受极端的 CPU 开销以获得更低的宽限期延迟，例如，消耗几十微秒的 CPU 时间来减少持续时间从几毫秒到几十微秒的宽限期。 <code>-&gt;qsmaskinit</code> 字段跟踪这个 <code>rcu_node</code> 结构的哪个子结构覆盖了至少一个在线 CPU。 此掩码用于初始化<code>-&gt;qsmask</code>，<code>-&gt;expmaskinit</code> 用于初始化<code>-&gt;expmask</code> 以及正常和加速宽限期的开始。</p>
+<ul>
+<li>阻塞任务管理</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">blkd_tasks</span>;</span></span><br><span class="line"> <span class="comment">/* Tasks blocked in RCU read-side critical */</span></span><br><span class="line"> <span class="comment">/*  section.  Tasks are placed at the head */</span></span><br><span class="line"> <span class="comment">/*  of this list and age towards the tail. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">gp_tasks</span>;</span></span><br><span class="line"> <span class="comment">/* Pointer to the first task blocking the */</span></span><br><span class="line"> <span class="comment">/*  current grace period, or NULL if there */</span></span><br><span class="line"> <span class="comment">/*  is no such task. */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> *<span class="title">exp_tasks</span>;</span></span><br><span class="line"> <span class="comment">/* Pointer to the first task blocking the */</span></span><br><span class="line"> <span class="comment">/*  current expedited grace period, or NULL */</span></span><br><span class="line"> <span class="comment">/*  if there is no such task.  If there */</span></span><br><span class="line"> <span class="comment">/*  is no current expedited grace period, */</span></span><br><span class="line"> <span class="comment">/*  then there can cannot be any such task. */</span></span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;blkd_tasks</code> 字段是阻塞和抢占任务列表的列表头。 当任务在 RCU 读端临界区内进行上下文切换时，它们的 <code>task_struct</code> 结构被排入队列（通过 <code>task_struct</code> 的 <code>-&gt;rcu_node_entry</code> 字段）到 <code>-&gt; blkd_tasks</code> 中，它是叶<code>rcu_node</code>结构的列表，对应于执行传出上下文切换的CPU。</p>
+<p> 当这些任务稍后退出它们的 RCU 读端临界区时，它们将自己从列表中移除。 因此这个列表是时间倒序的，所以如果其中一个任务阻塞了当前的宽限期，那么所有后续任务也必须阻塞同一个宽限期。 因此，指向此列表的单个指针足以跟踪所有阻塞给定宽限期的任务。 </p>
+<p>对于正常的宽限期，该指针存储在 <code>-&gt;gp_tasks</code> 中，对于加速的宽限期存储在 <code>-&gt;exp_tasks</code> 中。 如果没有进行中的宽限期或者没有阻止宽限期完成的阻塞任务，最后两个字段为“NULL”。 如果这两个指针中的任何一个正在引用一个从<code>-&gt;blkd_tasks</code>列表中删除自身的任务，那么该任务必须将指针推进到列表中的下一个任务，或者将指针设置为<code>NULL</code>如果列表中没有后续任务。</p>
+<p>例如，假设任务 T1、T2 和 T3 都 hard-affinitied 到系统中编号最大的 CPU 上。 然后，如果任务 T1 阻塞在 RCU 读端临界区，然后加速宽限期开始，然后任务 T2 阻塞在 RCU 读端临界区，然后正常宽限期开<br>始，最后任务 3 阻塞在 RCU 读端临界区，那么最后一个叶子 <code>rcu_node</code> 结构的阻塞任务列表的状态将如下所示：</p>
+<p><img src="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/blkd_task.svg" alt="blkd_task.svg"></p>
+<p>任务 T1 阻塞了两个宽限期，任务 T2 仅阻塞了正常宽限期，任务 T3 没有阻塞任何宽限期。 请注意，这些任务不会在恢复执行后立即从该列表中删除。 它们将保留在列表中，直到它们执行最外层的<br><code>rcu_read_unlock()</code> 结束它们的 RCU 读端临界区。</p>
+<p><code>-&gt;wait_blkd_tasks</code> 字段指示当前宽限期是否正在等待阻塞的任务。</p>
+<h3 id="1-3-rcu-segcblist-结构"><a href="#1-3-rcu-segcblist-结构" class="headerlink" title="1.3 rcu_segcblist 结构"></a>1.3 rcu_segcblist 结构</h3><p><code>rcu_segcblist</code> 结构维护一个分段的回调列表</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_segcblist</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> *<span class="title">head</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> **<span class="title">tails</span>[<span class="title">RCU_CBLIST_NSEGS</span>];</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> gp_seq[RCU_CBLIST_NSEGS];</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_RCU_NOCB_CPU</span></span><br><span class="line">	<span class="type">atomic_long_t</span> len;</span><br><span class="line"><span class="meta">#<span class="keyword">else</span></span></span><br><span class="line">	<span class="type">long</span> len;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">	<span class="type">long</span> seglen[RCU_CBLIST_NSEGS];</span><br><span class="line">	u8 flags;</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p><strong>1.3.1 关于 list 结构</strong>：</p>
+<p>分段如下：</p>
+<ul>
+<li><code>RCU_DONE_TAIL</code>：宽限期已过的回调。 这些回调已准备好被调用。</li>
+<li><code>RCU_WAIT_TAIL</code>：正在等待当前宽限期的回调。 请注意，不同的 CPU 可能对哪个宽限期是当前有不同的想法，见 <code>-&gt;gp_seq</code> 字段。</li>
+<li><code>RCU_NEXT_READY_TAIL</code>：等待下一个宽限期开始的回调。</li>
+<li><code>RCU_NEXT_TAIL</code>：尚未与宽限期关联的回调。</li>
+</ul>
+<p><code>-&gt;head</code> 指针引用第一个回调，或者如果列表不包含回调（这<em>不</em> 等于空）则为 <code>NULL</code>。 <code>-&gt;tails[]</code> 数组的每个元素引用列表相应段中最后一个回调的<code>-&gt;next</code> 指针，或者如果该段是列<br>表的<code>-&gt;head</code> 指针 并且之前的所有段都是空的。 如果相应的段为空但之前的某个段不为空，则数组元素与其前身相同。 较旧的回调更靠近列表的头部，新的回调添加在尾部。 <code>-&gt;head</code> 指针、<br><code>-&gt;tails[]</code> 数组和回调之间的关系如下图所示：</p>
+<p><img src="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/nxtlist.svg" alt="nxtlist.svg"></p>
+<p>在此图中，</p>
+<p><code>-&gt;head</code> 指针引用列表中的第一个 RCU 回调。 </p>
+<p><code>-&gt;tails[RCU_DONE_TAIL]</code> 数组元素引用<code>-&gt;head</code> 指针本身，表明没有任何回调准备好调用。</p>
+<p> <code>-&gt;tails[RCU_WAIT_TAIL]</code> 数组元素引用回调 CB 2 的 <code>-&gt;next</code> 指针，这表明 CB 1 和 CB 2 都在等待当前宽限期，给出或接受可能的分歧 哪个宽限期是当前的宽限期。</p>
+<p> <code>-&gt;tails[RCU_NEXT_READY_TAIL]</code> 数组元素引用与<code>-&gt;tails[RCU_WAIT_TAIL]</code> 相同的 RCU 回调，这表明没有回调等待下一个 RCU 宽限期。</p>
+<p> <code>-&gt;tails[RCU_NEXT_TAIL]</code> 数组元素引用 CB 4 的<code>-&gt;next</code> 指针，表示所有剩余的 RCU 回调尚未被分配 RCU 宽限期。 请注意，<br><code>-&gt;tails[RCU_NEXT_TAIL]</code> 数组元素始终引用最后一个 RCU 回调的<code>-&gt;next</code> 指针，除非回调列表为空，在这种情况下它引用<code>-&gt;head</code> 指针 .</p>
+<p><code>-&gt;tails[RCU_NEXT_TAIL]</code> 数组元素还有一个重要的特殊情况：当此列表<em>禁用</em>时，它可以是 <code>NULL</code>。 当相应的 CPU 处于离线状态或当相应的 CPU 的回调被卸载到 kthread 时，列表将被禁用，这两种情<br>况都在别处描述。</p>
+<p>随着宽限期的推进，CPU 将它们的回调<code>RCU_NEXT_TAI</code>推进到<code>RCU_NEXT_READY_TAIL</code>到<code>RCU_WAIT_TAIL</code>到<code>RCU_DONE_TAIL</code>列表段。</p>
+<p>1.3.2 gp_seq </p>
+<p><code>-&gt;gp_seq[]</code> 数组记录了与列表段对应的宽限期编号。 这就是允许不同的 CPU 对哪个是当前宽限期有不同的想法，同时仍然避免过早调用它们的回调。 特别是，这允许长时间空闲的 CPU 确定它们的哪些回调<br>已准备好在重新唤醒后调用。</p>
+<p>1.3.3 其他</p>
+<p><code>-&gt;len</code> 计数<code>-&gt;head</code> 中回调的数量，而<code>-&gt;len_lazy</code> 包含已知仅释放内存的那些回调的数量，其调用因此可以安全地推迟。</p>
+<p><code>-&gt;len</code> 字段决定是否存在与此 <code>rcu_segcblist</code> 结构关联的回调，<em>不是</em> <code>-&gt;head</code> 指针。 这样做的原因是所有准备好调用的回调（即那些在 <code>RCU_DONE_TAIL</code> 段中的回调）在回调调用时间（<code>rcu_do_batch</code>）被一次性全部提取出来，因此如果 <code>rcu_segcblist</code> 中没有未完成的回调，<code>-&gt;head</code> 可以设置为 NULL。 如果 callback 调用必须被推迟，（例如，因为一个高优先级进程刚刚在这个 CPU上醒来），那么剩余的回调将被放回 <code>RCU_DONE_TAIL</code> 段并且 <code>-&gt;head</code> 再次指向段的开始。 简而言之，head 字段可以短暂地为“NULL”，即使 CPU 一直存在回调。 因此，测试 <code>-&gt;head</code> 指针是否为 <code>NULL</code>是不合适的。</p>
+<p>相反，<code>-&gt;len</code> 和 <code>-&gt;len_lazy</code> 计数仅在调用相应的回调后才进行调整。 这意味着只有当 rcu_segcblist 结构确实没有回调时，-&gt;len 计数才为零。 当然，<code>-&gt;len</code> 计数的 off-CPU 采样需要小心使用适<br>当的同步，例如内存屏障。 这种同步可能有点微妙，特别是在 <code>rcu_barrier()</code> 的情况下。</p>
+<h3 id="1-4-rcu-data-结构"><a href="#1-4-rcu-data-结构" class="headerlink" title="1.4 rcu_data 结构"></a>1.4 rcu_data 结构</h3><p><code>rcu_data</code> 维护 RCU 子系统的每个 CPU 状态。 除非另有说明，否则只能从相应的 CPU（和tracing）访问此结构中的字段。 此结构是静态检测和 RCU 回调排队的重点。 它还跟踪它与相应的叶<code>rcu_node</code>结构的关系，以允许更有效地将静态状态传播到<code>rcu_node</code>组合树上。 与 rcu_node 结构一样，它提供了宽限期信息的本地副本，以允许从相应的 CPU 中免费同步访问此信息。 最后，该结构记录了相应 CPU 过去的 dyntick-idle 状态并跟踪统计信息。</p>
+<p><code>rcu_data</code> 结构的字段将在以下部分中单独和成组讨论。</p>
+<p>1.4.1 连接到其他数据结构</p>
+<p><code>rcu_data</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_data</span> &#123;</span></span><br><span class="line">  <span class="type">int</span> cpu;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> *<span class="title">mynode</span>;</span></span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> grpmask;</span><br><span class="line">  <span class="type">bool</span> beenonline;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;cpu</code> 字段是相应 CPU 的编号，<code>-&gt;mynode</code> 字段引用相应的 <code>rcu_node</code> 结构。 <code>-&gt;mynode</code> 用于在组合树上传播静止状态。 这两个字段是常量，因此不需要同步。</p>
+<p><code>-&gt;grpmask</code> 字段表示<code>-&gt;mynode-&gt;qsmask</code> 中与此<code>rcu_data</code> 结构对应的位，在传播静止状态时也会使用。 <code>-&gt;beenonline</code> 标志在相应的 CPU 上线时设置，这意味着 debugfs 跟踪不需要转储任何未设置此标志的 <code>rcu_data</code> 结构。</p>
+<p>1.4.2 静态和宽限期跟踪</p>
+<p><code>rcu_data</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_data</span> &#123;</span></span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> gp_seq;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> gp_seq_needed;</span><br><span class="line">  <span class="type">bool</span> cpu_no_qs;</span><br><span class="line">  <span class="type">bool</span> core_needs_qs;</span><br><span class="line">  <span class="type">bool</span> gpwrap;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;gp_seq</code> 字段与<code>rcu_state</code> 和<code>rcu_node</code> 结构中的同名字段对应。 <code>-&gt;gp_seq_needed</code> 字段是 rcu_node 结构中同名字段的对应部分。 它们可能每个都落后于它们的 <code>rcu_node</code> 对应物，但在<br><code>CONFIG_NO_HZ_IDLE</code> 和 <code>CONFIG_NO_HZ_FULL</code> 内核可以任意落后于 dyntick-idle 模式下的 CPU（但一旦退出 dyntick-idle 模式，这些计数器会赶上）。 如果给定的 <code>rcu_data</code> 结构的 <code>-&gt;gp_seq</code><br>的低两位为零，那么这个 <code>rcu_data</code> 结构认为 RCU 是空闲的。</p>
+<p>1.4.3  RCU 回调处理</p>
+<p>在没有 CPU 热插拔事件的情况下，RCU 回调由注册它们的同一个 CPU 调用。 这完全是一种缓存位置优化：回调可以并且确实在注册它们的 CPU 之外的 CPU 上被调用。 毕竟，如果注册给定回调的 CPU 在回调可以<br>被调用之前已经离线，那么真的没有其他选择。</p>
+<p><code>rcu_data</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_data</span> &#123;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">rcu_segcblist</span> <span class="title">cblist</span>;</span></span><br><span class="line">  <span class="type">long</span> qlen_last_fqs_check;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> n_cbs_invoked;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> n_nocbs_invoked;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> n_cbs_orphaned;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> n_cbs_adopted;</span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> n_force_qs_snap;</span><br><span class="line">  <span class="type">long</span> blimit;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;cblist</code> 结构是前面描述的分段回调列表。 只要 CPU 注意到另一个 RCU 宽限期已经完成，它就会在其 <code>rcu_data</code> 结构中推进回调。 CPU 通过注意到其<code>rcu_data</code>结构的<code>-&gt;gp_seq</code>字段的值与其叶<code>rcu_node</code>结构的值不同来检测 RCU 宽限期的完成。回想一下，每个 <code>rcu_node</code> 结构的 <code>-&gt;gp_seq</code> 字段在每个宽限期的开始和结束时更新。</p>
+<p>当回调列表变得过长时，<code>-&gt;qlen_last_fqs_check</code> 和<code>-&gt;n_force_qs_snap</code> 协调来自<code>call_rcu()</code> 和其朋友函数的静态强制。</p>
+<p><code>-&gt;n_cbs_invoked</code>、<code>-&gt;n_cbs_orphaned</code> 和 <code>-&gt;n_cbs_adopted</code> 字段计算调用的回调数，当此 CPU 离线时发送到其他 CPU，并在其他 CPU 离线时从其他 CPU 接收。<code>-&gt;n_nocbs_invoked</code>在 CPU 的回调被卸载到 kthread 时使用。</p>
+<p>最后，<code>-&gt;blimit</code> 计数器是在给定时间可以调用的 RCU 回调的最大数量。</p>
+<p>1.4.4 Dyntick-Idle 处理</p>
+<p><code>rcu_data</code> 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_data</span> &#123;</span></span><br><span class="line">	<span class="type">int</span> dynticks_snap;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> dynticks_fqs;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;dynticks_snap</code> 字段用于在强制静止状态时拍摄相应 CPU 的 dyntick-idle 状态的快照，因此可以从其他 CPU 访问。 最后，<code>-&gt;dynticks_fqs</code> 字段用于统计此CPU 被确定为dyntick-idle 状态的次数，用于跟踪和调试。</p>
+<p>rcu_data 结构的这一部分声明如下：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_data</span> &#123;</span></span><br><span class="line">  <span class="type">long</span> dynticks_nesting;</span><br><span class="line">  <span class="type">long</span> dynticks_nmi_nesting;</span><br><span class="line">  <span class="type">atomic_t</span> dynticks;</span><br><span class="line">  <span class="type">bool</span> rcu_need_heavy_qs;</span><br><span class="line">  <span class="type">bool</span> rcu_urgent_qs;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>rcu_data 结构中的这些字段维护相应 CPU 的 per-CPU dyntick-idle 状态。 除非另有说明，否则只能从相应的 CPU（和tracing）访问这些字段。</p>
+<p><code>-&gt;dynticks_nesting</code> 字段计算进程执行的嵌套深度，因此在正常情况下该计数器的值为零或一。 NMI、irq 和跟踪器由<code>-&gt;dynticks_nmi_nesting</code>字段计算。 由于无法屏蔽 NMI，因此必须使用 Andy Lutomirski 提供的算法仔细更改此变量。 idle 的初始转换加 1，嵌套转换加 2，因此嵌套级别 5 由 <code>-&gt;dynticks_nmi_nesting</code> 值 9 表示。 因此，这个计数器可以被认为是计算除了进程级转换之外，这个 CPU 不能进入 dyntick-idle 模式的原因的数量。</p>
+<p>然而，事实证明，当在非空闲内核上下文中运行时，Linux 内核完全能够进入永不退出的中断处理程序，反之亦然。 因此，每当 <code>-&gt;dynticks_nesting</code> 字段从零递增时，<code>-&gt;dynticks_nmi_nesting</code> 字段被设置为一个大的正数，每当 <code>-&gt;dynticks_nesting</code> 字段减少到 零，<code>-&gt;dynticks_nmi_nesting</code> 字段设置为零。 假设错误嵌套中断的数量不足以使计数器溢出，每次相应的 CPU 从进程上下文进入空闲循环时，这种方法都会纠正 <code>-&gt;dynticks_nmi_nesting</code> 字段。</p>
+<p><code>-&gt;dynticks</code> 字段计算相应的 CPU 进出 dyntick-idle 模式或用户模式的转换次数，因此当 CPU 处于 dyntick-idle 模式或用户模式时，该计数器的值为偶数，否则为奇数 . 用户模式自适应滴答支持需要计算进&#x2F;出用户模式的转换（参见 timers&#x2F;NO_HZ.txt）。</p>
+<p><code>-&gt;rcu_need_heavy_qs</code> 字段用于记录 RCU 核心代码真的很想从相应的 CPU 看到一个静止状态，以至于它愿意调用重量级的 dyntick-counter 操作 . 此标志由 RCU 的上下文切换和 <code>cond_resched()</code> 代码检查，它们提供暂时的空闲逗留作为响应。</p>
+<p>最后，<code>-&gt;rcu_urgent_qs</code> 字段用于记录 RCU 核心代码真的希望从相应的 CPU 看到静止状态这一事实，其他各种字段表明 RCU 多么想要这种静止状态。 此标志由 RCU 的上下文切换路径<br>（<code>rcu_note_context_switch</code>）和 cond_resched 代码检查。</p>
+<h3 id="1-5-rcu-head-结构"><a href="#1-5-rcu-head-结构" class="headerlink" title="1.5 rcu_head 结构"></a>1.5 rcu_head 结构</h3><p>每个 <code>rcu_head</code> 结构代表一个 RCU 回调。 这些结构通常嵌入在受 RCU 保护的数据结构中，其算法使用异步宽限期。 相反，当使用阻塞等待 RCU 宽限期的算法时，RCU 用户不需要提供“rcu_head”结构。</p>
+<p><code>rcu_head</code> 结构具有如下字段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> &#123;</span></span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> *<span class="title">next</span>;</span></span><br><span class="line">  <span class="type">void</span> (*func)(<span class="keyword">struct</span> rcu_head *head);</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;next</code> 字段用于将 <code>rcu_data</code> 结构中的列表中的 <code>rcu_head</code> 结构链接在一起。 <code>-&gt;func</code> 字段是一个指向函数的指针，当回调准备好被调用时，这个函数被传递一个指向 <code>rcu_head</code> 结构的指针。 但是，<code>kfree_rcu()</code> 使用<code>-&gt;func</code> 字段来记录<code>rcu_head</code> 结构在封闭的受 RCU 保护的数据结构中的偏移量。</p>
+<p>这两个字段都由 RCU 在内部使用。 从 RCU 用户的角度来看，这个结构是一个不透明的“cookie”。</p>
+<h3 id="1-6-task-struct-结构中的-RCU-特定字段"><a href="#1-6-task-struct-结构中的-RCU-特定字段" class="headerlink" title="1.6 task_struct 结构中的 RCU 特定字段"></a>1.6 <code>task_struct</code> 结构中的 RCU 特定字段</h3><p><code>CONFIG_PREEMPT_RCU</code> 实现在 <code>task_struct</code> 结构中使用了一些额外的字段：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_PREEMPT_RCU</span></span><br><span class="line">  <span class="type">int</span> rcu_read_lock_nesting;</span><br><span class="line">  <span class="class"><span class="keyword">union</span> <span class="title">rcu_special</span> <span class="title">rcu_read_unlock_special</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rcu_node_entry</span>;</span></span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> *<span class="title">rcu_blocked_node</span>;</span></span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* #ifdef CONFIG_PREEMPT_RCU */</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_TASKS_RCU</span></span><br><span class="line">  <span class="type">unsigned</span> <span class="type">long</span> rcu_tasks_nvcsw;</span><br><span class="line">  <span class="type">bool</span> rcu_tasks_holdout;</span><br><span class="line">  <span class="class"><span class="keyword">struct</span> <span class="title">list_head</span> <span class="title">rcu_tasks_holdout_list</span>;</span></span><br><span class="line">  <span class="type">int</span> rcu_tasks_idle_cpu;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* #ifdef CONFIG_TASKS_RCU */</span></span></span><br></pre></td></tr></table></figure>
+
+<p><code>-&gt;rcu_read_lock_nesting</code> 字段记录了 RCU 读端临界区的嵌套级别，</p>
+<ul>
+<li><p><code>-&gt;rcu_read_unlock_special</code> 字段是一个位掩码，记录了需要 <code>rcu_read_unlock()</code> 做额外操作的特殊条件。</p>
+</li>
+<li><p><code>-&gt;rcu_node_entry</code> 字段用于形成在可抢占 RCU 读端临界区内阻塞的任务列表，</p>
+</li>
+<li><p><code>-&gt;rcu_blocked_node</code> 字段引用 <code>rcu_node</code> 结构，该任务为其列表的成员，或者如果它没有被阻塞在可抢占的 RCU 读端临界区内，则为 <code>NULL</code>。</p>
+</li>
+<li><p><code>-&gt;rcu_tasks_nvcsw</code> 字段跟踪该任务在当前任务-RCU 宽限期开始时经历的自愿上下文切换次数，</p>
+</li>
+<li><p><code>-&gt;rcu_tasks_holdout</code> 如果当前 task-RCU 宽限期正在等待此任务则设置，</p>
+</li>
+<li><p><code>-&gt;rcu_tasks_holdout_list</code> 是将此任务排入 holdout 列表的列表元素</p>
+</li>
+<li><p><code>-&gt;rcu_tasks_idle_cpu</code> 跟踪此空闲任务正在运行的 CPU，但前提是该任务当前正在运行 ，也就是说，CPU 当前是否处于空闲状态。</p>
+</li>
+</ul>
+<h3 id="1-7-访问函数"><a href="#1-7-访问函数" class="headerlink" title="1.7 访问函数"></a>1.7 访问函数</h3><p>以下清单显示了<code>rcu_get_root()</code>、<code>rcu_for_each_node_breadth_first</code> 和<code>rcu_for_each_leaf_node()</code> 函数和宏：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">struct</span> rcu_node *<span class="title function_">rcu_get_root</span><span class="params">(<span class="keyword">struct</span> rcu_state *rsp)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> &amp;rsp-&gt;node[<span class="number">0</span>];</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> rcu_for_each_node_breadth_first(rsp, rnp) \</span></span><br><span class="line"><span class="meta">for ((rnp) = &amp;(rsp)-&gt;node[0]; \</span></span><br><span class="line"><span class="meta">(rnp) <span class="string">&lt; &amp;(rsp)-&gt;</span>node[NUM_RCU_NODES]; (rnp)++)</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> rcu_for_each_leaf_node(rsp, rnp) \</span></span><br><span class="line"><span class="meta">for ((rnp) = (rsp)-&gt;level[NUM_RCU_LVLS - 1]; \</span></span><br><span class="line"><span class="meta">(rnp) <span class="string">&lt; &amp;(rsp)-&gt;</span>node[NUM_RCU_NODES]; (rnp)++)</span></span><br></pre></td></tr></table></figure>
+
+<p><code>rcu_get_root()</code> 只是返回指向指定<code>rcu_state</code> 结构的<code>-&gt;node[]</code> 数组的第一个元素的指针，这是根<code>rcu_node</code> 结构。</p>
+<p>如前所述，<code>rcu_for_each_node_breadth_first()</code> 宏利用<code>rcu_state</code> 结构的<code>-&gt;node[]</code> 数组中的<code>rcu_node</code> 结构的布局，执行广度优先 遍历只需按顺序遍历数组即可。 类似地，<code>rcu_for_each_leaf_node()</code> 宏只遍历数组的最后一部分，因此只遍历叶<code>rcu_node</code> 结构。</p>
+<h2 id="2-rcu-读接口"><a href="#2-rcu-读接口" class="headerlink" title="2. rcu 读接口"></a>2. rcu 读接口</h2><p>rcu 读接口主要是 <code>rcu_read_lock()</code> 和 <code>rcu_read_unlock()</code>。</p>
+<p>我们先看 <code>rcu_read_lock()</code></p>
+<h3 id="2-1-rcu-read-lock"><a href="#2-1-rcu-read-lock" class="headerlink" title="2.1 rcu_read_lock()"></a>2.1 rcu_read_lock()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> __always_inline <span class="type">void</span> <span class="title function_">rcu_read_lock</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	__rcu_read_lock();</span><br><span class="line">	__acquire(RCU);</span><br><span class="line">	rcu_lock_acquire(&amp;rcu_lock_map);</span><br><span class="line">	RCU_LOCKDEP_WARN(!rcu_is_watching(),</span><br><span class="line">			 <span class="string">&quot;rcu_read_lock() used illegally while idle&quot;</span>);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Preemptible RCU implementation for rcu_read_lock().</span></span><br><span class="line"><span class="comment"> * Just increment -&gt;rcu_read_lock_nesting, shared state will be updated</span></span><br><span class="line"><span class="comment"> * if we block.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="comment">// kernel/rcu/tree_plugin.h</span></span><br><span class="line"><span class="type">void</span> __rcu_read_lock(<span class="type">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">	rcu_preempt_read_enter();</span><br><span class="line">	<span class="keyword">if</span> (IS_ENABLED(CONFIG_PROVE_LOCKING))</span><br><span class="line">		WARN_ON_ONCE(rcu_preempt_depth() &gt; RCU_NEST_PMAX);</span><br><span class="line">	<span class="keyword">if</span> (IS_ENABLED(CONFIG_RCU_STRICT_GRACE_PERIOD) &amp;&amp; rcu_state.gp_kthread)</span><br><span class="line">		WRITE_ONCE(current-&gt;rcu_read_unlock_special.b.need_qs, <span class="literal">true</span>);</span><br><span class="line">	barrier();  <span class="comment">/* critical section after entry code. */</span></span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(__rcu_read_lock);</span><br><span class="line"></span><br><span class="line"><span class="comment">// include/linux/rcupdate.h</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> __rcu_read_lock(<span class="type">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">	preempt_disable();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>这段代码实现了一个可抢占的RCU（Read-Copy Update）机制，主要是为了在多线程环境下进行读操作时保证数据的一致性。</p>
+<ul>
+<li><p><code>__rcu_read_lock</code>有两种 case</p>
+<ul>
+<li>Preemptible RCU<ul>
+<li>它首先调用 <code>rcu_preempt_read_enter</code> 函数来增加当前线程的 <strong>RCU读锁嵌套计数</strong>。然后，它根据配置选项检查一些条件</li>
+<li><code>IS_ENABLED(CONFIG_PROVE_LOCKING)</code>：如果启用了锁验证，则检查RCU抢占深度。</li>
+<li><code>IS_ENABLED(CONFIG_RCU_STRICT_GRACE_PERIOD)</code>：如果启用了严格的宽限期，则设置相应标志。</li>
+<li>最后，它调用 <code>barrier</code>函数来确保内存屏障。</li>
+</ul>
+</li>
+<li>Non-preemptible RCU<ul>
+<li>调用 preempt_disable 关闭抢占</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>调用 <code>__acquire()</code>，相关说明： <a target="_blank" rel="noopener" href="https://www.cnblogs.com/hellokitty2/p/12548422.html">内核工具 – Sparse 简介 </a></p>
+</li>
+<li><p><code>rcu_lock_acquire(&amp;rcu_lock_map);</code>：这是启用 lockdep 的时候会用到。</p>
+</li>
+</ul>
+<h3 id="2-2-rcu-read-unlock"><a href="#2-2-rcu-read-unlock" class="headerlink" title="2.2 rcu_read_unlock()"></a>2.2 rcu_read_unlock()</h3><p>和 <code>rcu_read_lock()</code> 类似，只是顺序反了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">rcu_read_unlock</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	RCU_LOCKDEP_WARN(!rcu_is_watching(),</span><br><span class="line">			 <span class="string">&quot;rcu_read_unlock() used illegally while idle&quot;</span>);</span><br><span class="line">	__release(RCU);</span><br><span class="line">	__rcu_read_unlock();</span><br><span class="line">	rcu_lock_release(&amp;rcu_lock_map); <span class="comment">/* Keep acq info for rls diags. */</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// include/linux/rcupdate.h</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> __rcu_read_unlock(<span class="type">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">	preempt_enable();</span><br><span class="line">	<span class="keyword">if</span> (IS_ENABLED(CONFIG_RCU_STRICT_GRACE_PERIOD))</span><br><span class="line">		rcu_read_unlock_strict();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">// include/linux/rcupdate.h</span></span><br><span class="line"><span class="comment">// Preemptible RCU implementation for rcu_read_unlock().</span></span><br><span class="line"><span class="type">void</span> __rcu_read_unlock(<span class="type">void</span>)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">task_struct</span> *<span class="title">t</span> =</span> current;</span><br><span class="line"></span><br><span class="line">	barrier();  <span class="comment">// critical section before exit code.</span></span><br><span class="line">	<span class="keyword">if</span> (rcu_preempt_read_exit() == <span class="number">0</span>) &#123;</span><br><span class="line">		barrier();  <span class="comment">// critical-section exit before .s check.</span></span><br><span class="line">		<span class="keyword">if</span> (unlikely(READ_ONCE(t-&gt;rcu_read_unlock_special.s)))</span><br><span class="line">			rcu_read_unlock_special(t);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">if</span> (IS_ENABLED(CONFIG_PROVE_LOCKING)) &#123;</span><br><span class="line">		<span class="type">int</span> rrln = rcu_preempt_depth();</span><br><span class="line"></span><br><span class="line">		WARN_ON_ONCE(rrln &lt; <span class="number">0</span> || rrln &gt; RCU_NEST_PMAX);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(__rcu_read_unlock);</span><br></pre></td></tr></table></figure>
+
+<h3 id="2-3-rcu-dereference"><a href="#2-3-rcu-dereference" class="headerlink" title="2.3 rcu_dereference()"></a>2.3 rcu_dereference()</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> __rcu_dereference_check(p, local, c, space) \</span></span><br><span class="line"><span class="meta">(&#123; \</span></span><br><span class="line"><span class="meta">	<span class="comment">/* Dependency order vs. p above. */</span> \</span></span><br><span class="line"><span class="meta">	typeof(*p) *local = (typeof(*p) *__force)READ_ONCE(p); \</span></span><br><span class="line"><span class="meta">	RCU_LOCKDEP_WARN(!(c), <span class="string">&quot;suspicious rcu_dereference_check() usage&quot;</span>); \</span></span><br><span class="line"><span class="meta">	rcu_check_sparse(p, space); \</span></span><br><span class="line"><span class="meta">	((typeof(*p) __force __kernel *)(local)); \</span></span><br><span class="line"><span class="meta">&#125;)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __rcu_dereference_protected(p, local, c, space) \</span></span><br><span class="line"><span class="meta">(&#123; \</span></span><br><span class="line"><span class="meta">	RCU_LOCKDEP_WARN(!(c), <span class="string">&quot;suspicious rcu_dereference_protected() usage&quot;</span>); \</span></span><br><span class="line"><span class="meta">	rcu_check_sparse(p, space); \</span></span><br><span class="line"><span class="meta">	((typeof(*p) __force __kernel *)(p)); \</span></span><br><span class="line"><span class="meta">&#125;)</span></span><br><span class="line"><span class="meta">#<span class="keyword">define</span> __rcu_dereference_raw(p, local) \</span></span><br><span class="line"><span class="meta">(&#123; \</span></span><br><span class="line"><span class="meta">	<span class="comment">/* Dependency order vs. p above. */</span> \</span></span><br><span class="line"><span class="meta">	typeof(p) local = READ_ONCE(p); \</span></span><br><span class="line"><span class="meta">	((typeof(*p) __force __kernel *)(local)); \</span></span><br><span class="line"><span class="meta">&#125;)</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>typeof(*p) *local = (typeof(*p) *__force)READ_ONCE(p);</code>：使用 <code>READ_ONCE</code> 读取指针 <code>p</code> 的值，并将其强制转换为 <code>typeof(*p) *</code> 类型，存储在 <code>local</code> 变量中。</li>
+<li><code>RCU_LOCKDEP_WARN(!(c), &quot;suspicious rcu_dereference_check() usage&quot;);</code>：lockdep 检查，如果 c  是 null，就报 warning，一般是配合 <code>rcu_read_lock_bh_held</code> 判断进程上下文状态。</li>
+<li><code>rcu_check_sparse(p, space);</code>：sparse 检查</li>
+<li><code>((typeof(*p) __force __kernel *)(local));</code>：返回强制转换为 <code>typeof(*p) __force __kernel *</code> 类型的 <code>local</code>。</li>
+</ul>
+<p><code>__rcu_dereference_raw</code> 没有 sparse 和 lockdep 检查</p>
+<p><code>__rcu_dereference_protected</code> 没有 <code>READ_ONCE</code>: rcu_dereference_protected 仅适用于更新侧的代码。在这种情况下，调用者通常会持有某种锁（例如自旋锁或互斥锁），以确保指针的值不会在读取过程中被其他线程修改。</p>
+<h2 id="3-rcu-更新接口"><a href="#3-rcu-更新接口" class="headerlink" title="3. rcu 更新接口"></a>3. rcu 更新接口</h2><p>RCU的写端调用了synchronize_rcu&#x2F;call_rcu两种类型的接口，事实上Linux内核提供了三种不同类型的RCU，因此也对应了相应形式的接口。</p>
+<ul>
+<li><code>call_rcu()</code> &#x2F;<code>synchronize_rcu()</code> : 启动Reclaimer，对旧的临界资源进行回收，其中synchronize_rcu表示同步等待回收，call_rcu表示异步回收；</li>
+<li><code>rcu_assign_pointer()</code>: 移除旧的指针指向，指向更新后的临界资源。</li>
+</ul>
+<h3 id="3-2-rcu-assign-pointer"><a href="#3-2-rcu-assign-pointer" class="headerlink" title="3.2 rcu_assign_pointer"></a>3.2 rcu_assign_pointer</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">define</span> rcu_assign_pointer(p, v)					      \</span></span><br><span class="line"><span class="meta">do &#123;									      \</span></span><br><span class="line"><span class="meta">	uintptr_t _r_a_p__v = (uintptr_t)(v);				      \</span></span><br><span class="line"><span class="meta">	rcu_check_sparse(p, __rcu);					      \</span></span><br><span class="line"><span class="meta">									      \</span></span><br><span class="line"><span class="meta">	<span class="keyword">if</span> (__builtin_constant_p(v) &amp;&amp; (_r_a_p__v) == (uintptr_t)NULL)	      \</span></span><br><span class="line"><span class="meta">		WRITE_ONCE((p), (typeof(p))(_r_a_p__v));		      \</span></span><br><span class="line"><span class="meta">	<span class="keyword">else</span>								      \</span></span><br><span class="line"><span class="meta">		smp_store_release(&amp;p, RCU_INITIALIZER((typeof(p))_r_a_p__v)); \</span></span><br><span class="line"><span class="meta">&#125; while (0)</span></span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><code>uintptr_t _r_a_p__v = (uintptr_t)(v);</code>：将值 v 转换为无符号整数类型 uintptr_t 并赋值给 _r_a_p__v。这样可以确保指针的大小和类型一致。</li>
+<li>检查 v 是否是一个编译时常量，并且是否为 NULL。__builtin_constant_p 是一个 GCC 内建函数，用于判断一个值是否是编译时常量。</li>
+<li>如果 v 不是编译时常量或不为 NULL，则使用 smp_store_release 函数以释放语义存储 p。RCU_INITIALIZER 用于初始化 RCU 指针。否则使用 WRITE_ONCE。（关于 WRITE_ONCE 和 smp_store_release 的区别，可以参考 <a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_30896803/article/details/142552445">这一篇博客</a>。</li>
+</ol>
+<p>总结来说，这段代码确保在多线程环境中安全地更新指针 p，并且根据 v 的类型和值选择不同的更新方式。</p>
+<h3 id="3-1-synchronize-rcu"><a href="#3-1-synchronize-rcu" class="headerlink" title="3.1 synchronize_rcu"></a>3.1 synchronize_rcu</h3><p><code>synchronize_rcu</code> 和 <code>call_rcu</code> 实现如下图所示</p>
+<p><img src="/../figures/image-20250222231441826.png" alt="image-20250222231441826"></p>
+<p><code>wait_rcu_gp()</code>: 具体代码在下面</p>
+<ol>
+<li><strong>初始化和注册回调</strong>：如果当前元素是第一次出现，初始化 <code>rs_array</code>中对应的 <code>rcu_head</code> 和 <code>completion</code>，并调用回调函数。</li>
+<li><strong>等待所有回调被调用</strong>：再次遍历 <code>crcu_array</code>。如果当前元素是第一次出现，等待 [<code>completion</code>](vscode-file:&#x2F;&#x2F;vscode-app&#x2F;Applications&#x2F;Visual Studio Code.app&#x2F;Contents&#x2F;Resources&#x2F;app&#x2F;out&#x2F;vs&#x2F;code&#x2F;electron-sandbox&#x2F;workbench&#x2F;workbench.html) 完成，并销毁 <code>rcu_head</code>。</li>
+</ol>
+<p>这里初始化了 completion，运行 <code>crcu_array[i]</code>，实际上也就是 <code>call_rcu_hurry()</code>（kernel 6.8 是这个）</p>
+<p>&#96;&#96;call_rcu_hurry()<code>其实会异步运行。它运行结束后，会调用 wakeme_after_rcu，告知后面运行</code>wait_for_completion()&#96; 的线程任务已完成。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Structure allowing asynchronous waiting on RCU.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">rcu_synchronize</span> &#123;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_head</span> <span class="title">head</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">completion</span> <span class="title">completion</span>;</span></span><br><span class="line">&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> <span class="title function_">wakeme_after_rcu</span><span class="params">(<span class="keyword">struct</span> rcu_head *head)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">rcu_synchronize</span> *<span class="title">rcu</span>;</span></span><br><span class="line"></span><br><span class="line">	rcu = container_of(head, <span class="keyword">struct</span> rcu_synchronize, head);</span><br><span class="line">  <span class="comment">// 通知另一个线程 completion 事件已完成</span></span><br><span class="line">	complete(&amp;rcu-&gt;completion);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">void</span> __wait_rcu_gp(<span class="type">bool</span> checktiny, <span class="type">int</span> n, <span class="type">call_rcu_func_t</span> *crcu_array,</span><br><span class="line">		   <span class="keyword">struct</span> rcu_synchronize *rs_array)</span><br><span class="line">&#123;	<span class="comment">//...</span></span><br><span class="line">	<span class="comment">/* Initialize and register callbacks for each crcu_array element. */</span></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">		<span class="comment">// ...</span></span><br><span class="line">		<span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; i; j++)</span><br><span class="line">			<span class="keyword">if</span> (crcu_array[j] == crcu_array[i])</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">    <span class="comment">// 遍历所有 crcu_array_func_t，若第一次出现，则对 rcu_synchronize 进行初始化</span></span><br><span class="line">		<span class="keyword">if</span> (j == i) &#123;</span><br><span class="line">			init_rcu_head_on_stack(&amp;rs_array[i].head);</span><br><span class="line">			init_completion(&amp;rs_array[i].completion);</span><br><span class="line">      <span class="comment">// 调用 call_rcu_hurry(&amp;rs_array[i].head, wakeme_after_rcu)</span></span><br><span class="line">			(crcu_array[i])(&amp;rs_array[i].head, wakeme_after_rcu);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Wait for all callbacks to be invoked. */</span></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; n; i++) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">		<span class="keyword">for</span> (j = <span class="number">0</span>; j &lt; i; j++)</span><br><span class="line">			<span class="keyword">if</span> (crcu_array[j] == crcu_array[i])</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">		<span class="keyword">if</span> (j == i) &#123;</span><br><span class="line">      <span class="comment">// 等待 call_rcu_hurry 完成</span></span><br><span class="line">			wait_for_completion(&amp;rs_array[i].completion);</span><br><span class="line">			destroy_rcu_head_on_stack(&amp;rs_array[i].head);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(__wait_rcu_gp);</span><br></pre></td></tr></table></figure>
+
+<p>我们再来看看 <code>(crcu_array[i])(&amp;rs_array[i].head, wakeme_after_rcu);</code> 也就是 <code>call_rcu_hurry</code> 里面具体在做什么。</p>
+<p>从调用链看 <code>call_rcu_hurry</code> -&gt; <code>__cal_rcu_common</code> -&gt; <code>__call_rcu_core</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span></span><br><span class="line">__call_rcu_common(<span class="keyword">struct</span> rcu_head *head, <span class="type">rcu_callback_t</span> func, <span class="type">bool</span> lazy_in)</span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 设置回调函数和下一个回调指针，并记录辅助栈信息。</span></span><br><span class="line">	head-&gt;func = func;</span><br><span class="line">	head-&gt;next = <span class="literal">NULL</span>;</span><br><span class="line">	kasan_record_aux_stack_noalloc(head);</span><br><span class="line">  <span class="comment">// 保存中断标志并获取当前 CPU 的 RCU 数据</span></span><br><span class="line">	local_irq_save(flags);</span><br><span class="line">	rdp = this_cpu_ptr(&amp;rcu_data);</span><br><span class="line">	lazy = lazy_in &amp;&amp; !rcu_async_should_hurry();</span><br><span class="line"></span><br><span class="line">	<span class="comment">// 检查并初始化回调列表</span></span><br><span class="line">	<span class="keyword">if</span> (unlikely(!rcu_segcblist_is_enabled(&amp;rdp-&gt;cblist))) &#123;</span><br><span class="line">		<span class="comment">// Very early boot, before rcu_init().  Initialize if needed</span></span><br><span class="line">		<span class="comment">// and then drop through to queue the callback.</span></span><br><span class="line">		<span class="keyword">if</span> (rcu_segcblist_empty(&amp;rdp-&gt;cblist))</span><br><span class="line">			rcu_segcblist_init(&amp;rdp-&gt;cblist);</span><br><span class="line">	&#125;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 检查回调过载并尝试旁路</span></span><br><span class="line">	check_cb_ovld(rdp);</span><br><span class="line">	<span class="keyword">if</span> (rcu_nocb_try_bypass(rdp, head, &amp;was_alldone, flags, lazy))</span><br><span class="line">		<span class="keyword">return</span>; <span class="comment">// Enqueued onto -&gt;nocb_bypass, so just leave.</span></span><br><span class="line">  </span><br><span class="line">	<span class="comment">// 将回调添加到回调列表</span></span><br><span class="line">	rcu_segcblist_enqueue(&amp;rdp-&gt;cblist, head);</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">// 处理 RCU 核心处理</span></span><br><span class="line">	<span class="keyword">if</span> (unlikely(rcu_rdp_is_offloaded(rdp))) &#123;</span><br><span class="line">		__call_rcu_nocb_wake(rdp, was_alldone, flags); <span class="comment">/* unlocks */</span></span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		__call_rcu_core(rdp, head, flags);</span><br><span class="line">		local_irq_restore(flags);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>在 <code>__call_ruc_common</code> 中，有如下几步：</p>
+<ol>
+<li>设置回调函数和下一个回调指针，并记录辅助栈信息。</li>
+<li>检查回调列表是否过载，否则将回调列表加入列表中，即我们前文提到的 <code>rcu_data</code> 的 <code>cb_list</code>。</li>
+<li>进入 <code>call_rcu_core</code> 处理</li>
+</ol>
+<p>关于 <code>call_rcu_core</code> 的代码代码如下图所示（不过这个图的 kernel 版本比较旧了，不过大致的代码逻辑差不多</p>
+<p><img src="/../figures/image-20250222231547816.png" alt="image-20250222231547816"></p>
+<p>这里我们简要概括下 <code>__call_rcu_core</code> 的流程：</p>
+<ul>
+<li>这个函数首先检查当前是否处于扩展的静默状态（quiescent state），如果是，则调用 <code>invoke_rcu_core()</code> 唤醒 softirq 或者是 <code>rcu_core_kthread</code> 处理 RCU callbacks</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">invoke_rcu_core</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (!cpu_online(smp_processor_id()))</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	<span class="keyword">if</span> (use_softirq)</span><br><span class="line">		raise_softirq(RCU_SOFTIRQ);</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		invoke_rcu_core_kthread();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>将上层 <code>rcu_node</code> 的宽限期信息同步到本 CPU 的 rcu_data 中，主要是宽限期等信息。</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">note_gp_changes</span><span class="params">(<span class="keyword">struct</span> rcu_data *rdp)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">	needwake = __note_gp_changes(rnp, rdp);</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">	<span class="keyword">if</span> (needwake)</span><br><span class="line">		rcu_gp_kthread_wake();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>__note_gp_changes</code>决定是否 wakeup gp_kthread，需要则 <code>swake_up_one_online(&amp;rcu_state.gp_wq);</code> 唤醒。</p>
+<p>那么通过<code>__call_rcu</code>注册的这些回调函数在哪里调用呢？我们前面提到，答案是在<code>RCU_SOFTIRQ</code>软中断中，我们来看看这一部分的执行过程</p>
+<p><img src="/../figures/image-20250222231643425.png" alt="image-20250222231643425"></p>
+<p>6.8 kernel 里面 rcu_process_callbacks 换成了 rcu_core</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Perform RCU core processing work for the current CPU.  */</span></span><br><span class="line"><span class="type">static</span> __latent_entropy <span class="type">void</span> <span class="title function_">rcu_core</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">// ...</span></span><br><span class="line">	<span class="comment">/* Report any deferred quiescent states if preemption enabled. */</span></span><br><span class="line">	<span class="keyword">if</span> (IS_ENABLED(CONFIG_PREEMPT_COUNT) &amp;&amp; (!(preempt_count() &amp; PREEMPT_MASK))) &#123;</span><br><span class="line">		rcu_preempt_deferred_qs(current);</span><br><span class="line">	&#125; <span class="keyword">else</span> <span class="keyword">if</span> (rcu_preempt_need_deferred_qs(current)) &#123;</span><br><span class="line">		set_tsk_need_resched(current);</span><br><span class="line">		set_preempt_need_resched();</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Update RCU state based on any recent quiescent states. */</span></span><br><span class="line">	rcu_check_quiescent_state(rdp);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* No grace period and unregistered callbacks? */</span></span><br><span class="line">	<span class="keyword">if</span> (!rcu_gp_in_progress() &amp;&amp;</span><br><span class="line">	    rcu_segcblist_is_enabled(&amp;rdp-&gt;cblist) &amp;&amp; do_batch) &#123;</span><br><span class="line">		rcu_nocb_lock_irqsave(rdp, flags);</span><br><span class="line">		<span class="keyword">if</span> (!rcu_segcblist_restempty(&amp;rdp-&gt;cblist, RCU_NEXT_READY_TAIL))</span><br><span class="line">			rcu_accelerate_cbs_unlocked(rnp, rdp);</span><br><span class="line">		rcu_nocb_unlock_irqrestore(rdp, flags);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	rcu_check_gp_start_stall(rnp, rdp, rcu_jiffies_till_stall_check());</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* If there are callbacks ready, invoke them. */</span></span><br><span class="line">	<span class="keyword">if</span> (do_batch &amp;&amp; rcu_segcblist_ready_cbs(&amp;rdp-&gt;cblist) &amp;&amp;</span><br><span class="line">	    likely(READ_ONCE(rcu_scheduler_fully_active))) &#123;</span><br><span class="line">		rcu_do_batch(rdp);</span><br><span class="line">		<span class="comment">/* Re-invoke RCU core processing if there are callbacks remaining. */</span></span><br><span class="line">		<span class="keyword">if</span> (rcu_segcblist_ready_cbs(&amp;rdp-&gt;cblist))</span><br><span class="line">			invoke_rcu_core();</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>主要就做下面这几件事情。</p>
+<ol>
+<li><strong>检查静止状态</strong>: <code>rcu_check_quiescent_state</code><ul>
+<li>基于 rcu_data 的 graceperiod 更新宽限期。</li>
+<li>沿着 rcu-tree 树形结构（如 1. Data structures 小节描述的）层层汇报静止状态。rcu_report_qs_rdp -&gt;  rcu_report_qs_rnp -&gt; rcu_report_qs_rsp -&gt; rcu_gp_kthread_wake</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span></span><br><span class="line"><span class="title function_">rcu_check_quiescent_state</span><span class="params">(<span class="keyword">struct</span> rcu_data *rdp)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">/* Check for grace-period ends and beginnings. */</span></span><br><span class="line">	note_gp_changes(rdp);</span><br><span class="line">  <span class="comment">//...</span></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Tell RCU we are done (but rcu_report_qs_rdp() will be the</span></span><br><span class="line"><span class="comment">	 * judge of that).</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	rcu_report_qs_rdp(rdp);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li><p><strong>处理未注册的回调</strong>：</p>
+<ol>
+<li>如果没有处于宽限期且没有未注册的回调，进行相应处理。</li>
+</ol>
+</li>
+<li><p><strong>检查宽限期开始的停滞</strong>：<code>rcu_check_gp_start_stall</code></p>
+<ol>
+<li>检查是否需要开始新的宽限期。</li>
+</ol>
+</li>
+<li><p><strong>调用准备好的回调</strong>：</p>
+</li>
+</ol>
+<ul>
+<li>如果有回调准备好，调用它们，并在必要时重新调用 RCU 核心处理。</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* If there are callbacks ready, invoke them. */</span></span><br><span class="line"><span class="keyword">if</span> (do_batch &amp;&amp; rcu_segcblist_ready_cbs(&amp;rdp-&gt;cblist) &amp;&amp;</span><br><span class="line">    likely(READ_ONCE(rcu_scheduler_fully_active))) &#123;</span><br><span class="line">	rcu_do_batch(rdp);</span><br><span class="line">	<span class="comment">/* Re-invoke RCU core processing if there are callbacks remaining. */</span></span><br><span class="line">	<span class="keyword">if</span> (rcu_segcblist_ready_cbs(&amp;rdp-&gt;cblist))</span><br><span class="line">		invoke_rcu_core();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>没处理完则调用 Invoke_rcu_core 继续处理</li>
+</ul>
+<h2 id="4-宽限期处理"><a href="#4-宽限期处理" class="headerlink" title="4. 宽限期处理"></a>4. 宽限期处理</h2><p><img src="/../figures/image-20250222231726225.png" alt="image-20250222231726225"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Body of kthread that handles grace periods.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> __noreturn <span class="title function_">rcu_gp_kthread</span><span class="params">(<span class="type">void</span> *unused)</span></span><br><span class="line">&#123;</span><br><span class="line">	rcu_bind_gp_kthread();</span><br><span class="line">	<span class="keyword">for</span> (;;) &#123;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Handle grace-period start. */</span></span><br><span class="line">		<span class="keyword">for</span> (;;) &#123;</span><br><span class="line">			trace_rcu_grace_period(rcu_state.name, rcu_state.gp_seq,</span><br><span class="line">					       TPS(<span class="string">&quot;reqwait&quot;</span>));</span><br><span class="line">			WRITE_ONCE(rcu_state.gp_state, RCU_GP_WAIT_GPS);</span><br><span class="line">			swait_event_idle_exclusive(rcu_state.gp_wq,</span><br><span class="line">					 READ_ONCE(rcu_state.gp_flags) &amp;</span><br><span class="line">					 RCU_GP_FLAG_INIT);</span><br><span class="line">			rcu_gp_torture_wait();</span><br><span class="line">			WRITE_ONCE(rcu_state.gp_state, RCU_GP_DONE_GPS);</span><br><span class="line">			<span class="comment">/* Locking provides needed memory barrier. */</span></span><br><span class="line">			<span class="keyword">if</span> (rcu_gp_init())</span><br><span class="line">				<span class="keyword">break</span>;</span><br><span class="line">			cond_resched_tasks_rcu_qs();</span><br><span class="line">			WRITE_ONCE(rcu_state.gp_activity, jiffies);</span><br><span class="line">			WARN_ON(signal_pending(current));</span><br><span class="line">			trace_rcu_grace_period(rcu_state.name, rcu_state.gp_seq,</span><br><span class="line">					       TPS(<span class="string">&quot;reqwaitsig&quot;</span>));</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Handle quiescent-state forcing. */</span></span><br><span class="line">		rcu_gp_fqs_loop();</span><br><span class="line"></span><br><span class="line">		<span class="comment">/* Handle grace-period end. */</span></span><br><span class="line">		WRITE_ONCE(rcu_state.gp_state, RCU_GP_CLEANUP);</span><br><span class="line">		rcu_gp_cleanup();</span><br><span class="line">		WRITE_ONCE(rcu_state.gp_state, RCU_GP_CLEANED);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>rcu_gp_fqs_loop()</code> 中执行 quitescent-state forcing 直到 graceperiod 停止</li>
+<li><code>rcu_gp_cleanup()</code> 执行 grace period 结束之后执行的操作</li>
+</ul>
+<p>其实也可以关注下 rcu_state.gp_state 的变化过程，其脉络也很清晰，下面的说明中，我们主要聚焦于上面这两个函数。</p>
+<h3 id="4-1-rcu-gp-fqs-loop"><a href="#4-1-rcu-gp-fqs-loop" class="headerlink" title="4.1 rcu_gp_fqs_loop"></a>4.1 rcu_gp_fqs_loop</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> noinline_for_stack <span class="type">void</span> <span class="title function_">rcu_gp_fqs_loop</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">bool</span> first_gp_fqs = <span class="literal">true</span>; <span class="comment">// 标记是否是第一次强制进入静止状态</span></span><br><span class="line">    <span class="type">int</span> gf = <span class="number">0</span>; <span class="comment">// 标记变量，用于记录RCU的状态标志</span></span><br><span class="line">    <span class="type">unsigned</span> <span class="type">long</span> j; <span class="comment">// 用于记录时间间隔</span></span><br><span class="line">    <span class="type">int</span> ret; <span class="comment">// 返回值，用于控制循环逻辑</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">rcu_node</span> *<span class="title">rnp</span> =</span> rcu_get_root(); <span class="comment">// 获取RCU树的根节点</span></span><br><span class="line"></span><br><span class="line">    <span class="keyword">for</span> (;;) &#123;</span><br><span class="line">      	<span class="comment">// ....</span></span><br><span class="line">        <span class="keyword">if</span> (!READ_ONCE(rnp-&gt;qsmask) &amp;&amp; !rcu_preempt_blocked_readers_cgp(rnp))</span><br><span class="line">            <span class="keyword">break</span>; <span class="comment">// 如果根节点的qsmask为0且没有阻塞的读者，退出循环</span></span><br><span class="line">      </span><br><span class="line">      	<span class="comment">// 执行静止状态 forcing(fqs)</span></span><br><span class="line">        <span class="keyword">if</span> (!time_after(rcu_state.jiffies_force_qs, jiffies) || (gf &amp; (RCU_GP_FLAG_FQS | RCU_GP_FLAG_OVLD))) &#123;</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">            rcu_gp_fqs(first_gp_fqs); </span><br><span class="line">            <span class="comment">// ...</span></span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>rcu_gp_fqs_loop</code> 的核心逻辑在于循环执行 <code>rcu_gp_fqs</code> ，直到没有阻塞的读者，所有核都进入静止状态。</p>
+<p>而 rcu_gp_fqs 做的事情则是执行一轮 <code>quiescent-state forcing</code>，会调用到 <code>force_qs_rnp</code>，做的事情就是检测所有的叶子 rcu_node，收集每个 CPU 的静止状态。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">force_qs_rnp</span><span class="params">(<span class="type">int</span> (*f)(<span class="keyword">struct</span> rcu_data *rdp))</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// 遍历每个叶子节点的 rcu_node</span></span><br><span class="line">	rcu_for_each_leaf_node(rnp) &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">		for_each_leaf_node_cpu_mask(rnp, cpu, rnp-&gt;qsmask) &#123;</span><br><span class="line">      <span class="comment">// 遍历每个核的 rcu_data</span></span><br><span class="line">			rdp = per_cpu_ptr(&amp;rcu_data, cpu);</span><br><span class="line">			ret = f(rdp);</span><br><span class="line">			<span class="keyword">if</span> (ret &gt; <span class="number">0</span>) &#123;</span><br><span class="line">				mask |= rdp-&gt;grpmask;</span><br><span class="line">				rcu_disable_urgency_upon_qs(rdp);</span><br><span class="line">			&#125;</span><br><span class="line">			<span class="keyword">if</span> (ret &lt; <span class="number">0</span>)</span><br><span class="line">				rsmask |= rdp-&gt;grpmask;</span><br><span class="line">		&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="4-2-rcu-gp-cleanup"><a href="#4-2-rcu-gp-cleanup" class="headerlink" title="4.2 rcu_gp_cleanup"></a>4.2 rcu_gp_cleanup</h3><p>这段代码主要步骤包括</p>
+<ol>
+<li><strong>初始化和锁定</strong>：<ul>
+<li>更新 RCU 状态的活动时间。</li>
+<li>锁定根节点<code>rnp</code>，记录宽限期结束时间，并计算宽限期持续时间。</li>
+</ul>
+</li>
+<li><strong>标记宽限期结束</strong>：<ul>
+<li>调用 <code>rcu_poll_gp_seq_end</code> 标记宽限期结束，并解锁根节点。</li>
+</ul>
+</li>
+<li><strong>传播新的宽限期序列</strong>：<ul>
+<li>计算新的宽限期序列 <code>new_gp_seq</code>。</li>
+<li>遍历所有 RCU 节点，更新它们的 <code>gp_seq</code>，并检查是否需要新的宽限期。</li>
+</ul>
+</li>
+<li><strong>处理回调和清理</strong>：<ul>
+<li>检查和处理回调，清理过载的 CPU。</li>
+</ul>
+</li>
+<li><strong>检查是否需要新的宽限期</strong>：<ul>
+<li>如果需要新的宽限期，设置相应的标志位。</li>
+</ul>
+</li>
+<li><strong>通知所有 CPU 宽限期结束（如果严格模式启用）</strong>：<ul>
+<li>如果启用了严格模式，通知所有 CPU 宽限期结束。</li>
+</ul>
+</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> noinline <span class="type">void</span> <span class="title function_">rcu_gp_cleanup</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 更新 RCU 状态的活动时间</span></span><br><span class="line">    WRITE_ONCE(rcu_state.gp_activity, jiffies);</span><br><span class="line">    raw_spin_lock_irq_rcu_node(rnp);</span><br><span class="line">    rcu_state.gp_end = jiffies;</span><br><span class="line">    gp_duration = rcu_state.gp_end - rcu_state.gp_start;</span><br><span class="line">    <span class="keyword">if</span> (gp_duration &gt; rcu_state.gp_max)</span><br><span class="line">        rcu_state.gp_max = gp_duration;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 标记宽限期结束</span></span><br><span class="line">    rcu_poll_gp_seq_end(&amp;rcu_state.gp_seq_polled_snap);</span><br><span class="line">    raw_spin_unlock_irq_rcu_node(rnp);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 传播新的 gp_seq 值到 rcu_node 结构</span></span><br><span class="line">    new_gp_seq = rcu_state.gp_seq;</span><br><span class="line">    rcu_seq_end(&amp;new_gp_seq);</span><br><span class="line">    rcu_for_each_node_breadth_first(rnp) &#123;</span><br><span class="line">      	<span class="comment">// ...</span></span><br><span class="line">        rdp = this_cpu_ptr(&amp;rcu_data);</span><br><span class="line">        <span class="keyword">if</span> (rnp == rdp-&gt;mynode)</span><br><span class="line">            needgp = __note_gp_changes(rnp, rdp) || needgp;</span><br><span class="line">        needgp = rcu_future_gp_cleanup(rnp) || needgp;</span><br><span class="line">        <span class="keyword">if</span> (rcu_is_leaf_node(rnp))</span><br><span class="line">            for_each_leaf_node_cpu_mask(rnp, cpu, rnp-&gt;cbovldmask) &#123;</span><br><span class="line">                rdp = per_cpu_ptr(&amp;rcu_data, cpu);</span><br><span class="line">                check_cb_ovld_locked(rdp, rnp);</span><br><span class="line">            &#125;</span><br><span class="line">      <span class="comment">// ...</span></span><br><span class="line">    &#125;</span><br><span class="line">    rnp = rcu_get_root();</span><br><span class="line">    raw_spin_lock_irq_rcu_node(rnp);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 声明宽限期结束</span></span><br><span class="line">    trace_rcu_grace_period(rcu_state.name, rcu_state.gp_seq, TPS(<span class="string">&quot;end&quot;</span>));</span><br><span class="line">    rcu_seq_end(&amp;rcu_state.gp_seq);</span><br><span class="line">    ASSERT_EXCLUSIVE_WRITER(rcu_state.gp_seq);</span><br><span class="line">    WRITE_ONCE(rcu_state.gp_state, RCU_GP_IDLE);</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 检查是否需要新的宽限期</span></span><br><span class="line">    rdp = this_cpu_ptr(&amp;rcu_data);</span><br><span class="line">    <span class="keyword">if</span> (!needgp &amp;&amp; ULONG_CMP_LT(rnp-&gt;gp_seq, rnp-&gt;gp_seq_needed)) &#123;</span><br><span class="line">        trace_rcu_this_gp(rnp, rdp, rnp-&gt;gp_seq_needed, TPS(<span class="string">&quot;CleanupMore&quot;</span>));</span><br><span class="line">        needgp = <span class="literal">true</span>;</span><br><span class="line">    &#125;</span><br><span class="line"></span><br><span class="line">    <span class="comment">// 加速回调处理，把一些 callback 的状态设置为可以处理的，而不是等待 graceperiod</span></span><br><span class="line">    offloaded = rcu_rdp_is_offloaded(rdp);</span><br><span class="line">    <span class="keyword">if</span> ((offloaded || !rcu_accelerate_cbs(rnp, rdp)) &amp;&amp; needgp) &#123;</span><br><span class="line">        WRITE_ONCE(rcu_state.gp_flags, RCU_GP_FLAG_INIT);</span><br><span class="line">        WRITE_ONCE(rcu_state.gp_req_activity, jiffies);</span><br><span class="line">        trace_rcu_grace_period(rcu_state.name, rcu_state.gp_seq, TPS(<span class="string">&quot;newreq&quot;</span>));</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="5-静止状态处理"><a href="#5-静止状态处理" class="headerlink" title="5. 静止状态处理"></a>5. 静止状态处理</h2><p><img src="/../figures/image-20250222231825035.png" alt="image-20250222231825035"></p>
+<p>update_process_times -&gt; rcu_sched_clock_irq -&gt; rcu_qs</p>
+<p>rcu_qs 中会设置每个 rcu_data 的 qs 状态</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/*</span></span><br><span class="line"><span class="comment"> * Note a quiescent state for PREEMPTION=n.  Because we do not need to know</span></span><br><span class="line"><span class="comment"> * how many quiescent states passed, just if there was at least one since</span></span><br><span class="line"><span class="comment"> * the start of the grace period, this just sets a flag.  The caller must</span></span><br><span class="line"><span class="comment"> * have disabled preemption.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">rcu_qs</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">	RCU_LOCKDEP_WARN(preemptible(), <span class="string">&quot;rcu_qs() invoked with preemption enabled!!!&quot;</span>);</span><br><span class="line">	<span class="keyword">if</span> (!__this_cpu_read(rcu_data.cpu_no_qs.s))</span><br><span class="line">		<span class="keyword">return</span>;</span><br><span class="line">	trace_rcu_grace_period(TPS(<span class="string">&quot;rcu_sched&quot;</span>),</span><br><span class="line">			       __this_cpu_read(rcu_data.gp_seq), TPS(<span class="string">&quot;cpuqs&quot;</span>));</span><br><span class="line">	__this_cpu_write(rcu_data.cpu_no_qs.b.norm, <span class="literal">false</span>);</span><br><span class="line">	<span class="keyword">if</span> (__this_cpu_read(rcu_data.cpu_no_qs.b.<span class="built_in">exp</span>))</span><br><span class="line">		rcu_report_exp_rdp(this_cpu_ptr(&amp;rcu_data));</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="6-状态转换"><a href="#6-状态转换" class="headerlink" title="6. 状态转换"></a>6. 状态转换</h2><p><img src="/../figures/image-20250222231859402.png" alt="image-20250222231859402"></p>
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/LoyenWang/p/12770878.html">https://www.cnblogs.com/LoyenWang/p/12770878.html</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/hellokitty2/p/16999547.html">https://www.cnblogs.com/hellokitty2/p/16999547.html</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/Data-Structures.html">https://www.kernel.org/doc/Documentation/RCU/Design/Data-Structures/Data-Structures.html</a></li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-rcu-usage"><span class="toc-number">1.</span> <span class="toc-text">0. rcu usage</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-rcu-data-structures"><span class="toc-number">2.</span> <span class="toc-text">1. rcu data structures</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-rcu-state-%E7%BB%93%E6%9E%84"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 rcu_state 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-rcu-node-%E7%BB%93%E6%9E%84"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 rcu_node 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-3-rcu-segcblist-%E7%BB%93%E6%9E%84"><span class="toc-number">2.3.</span> <span class="toc-text">1.3 rcu_segcblist 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-4-rcu-data-%E7%BB%93%E6%9E%84"><span class="toc-number">2.4.</span> <span class="toc-text">1.4 rcu_data 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-5-rcu-head-%E7%BB%93%E6%9E%84"><span class="toc-number">2.5.</span> <span class="toc-text">1.5 rcu_head 结构</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-6-task-struct-%E7%BB%93%E6%9E%84%E4%B8%AD%E7%9A%84-RCU-%E7%89%B9%E5%AE%9A%E5%AD%97%E6%AE%B5"><span class="toc-number">2.6.</span> <span class="toc-text">1.6 task_struct 结构中的 RCU 特定字段</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-7-%E8%AE%BF%E9%97%AE%E5%87%BD%E6%95%B0"><span class="toc-number">2.7.</span> <span class="toc-text">1.7 访问函数</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-rcu-%E8%AF%BB%E6%8E%A5%E5%8F%A3"><span class="toc-number">3.</span> <span class="toc-text">2. rcu 读接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-rcu-read-lock"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 rcu_read_lock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-rcu-read-unlock"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 rcu_read_unlock()</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-rcu-dereference"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 rcu_dereference()</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-rcu-%E6%9B%B4%E6%96%B0%E6%8E%A5%E5%8F%A3"><span class="toc-number">4.</span> <span class="toc-text">3. rcu 更新接口</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#3-2-rcu-assign-pointer"><span class="toc-number">4.1.</span> <span class="toc-text">3.2 rcu_assign_pointer</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#3-1-synchronize-rcu"><span class="toc-number">4.2.</span> <span class="toc-text">3.1 synchronize_rcu</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-%E5%AE%BD%E9%99%90%E6%9C%9F%E5%A4%84%E7%90%86"><span class="toc-number">5.</span> <span class="toc-text">4. 宽限期处理</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#4-1-rcu-gp-fqs-loop"><span class="toc-number">5.1.</span> <span class="toc-text">4.1 rcu_gp_fqs_loop</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#4-2-rcu-gp-cleanup"><span class="toc-number">5.2.</span> <span class="toc-text">4.2 rcu_gp_cleanup</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#5-%E9%9D%99%E6%AD%A2%E7%8A%B6%E6%80%81%E5%A4%84%E7%90%86"><span class="toc-number">6.</span> <span class="toc-text">5. 静止状态处理</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#6-%E7%8A%B6%E6%80%81%E8%BD%AC%E6%8D%A2"><span class="toc-number">7.</span> <span class="toc-text">6. 状态转换</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">8.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&text=rcu(1) - basics"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&is_video=false&description=rcu(1) - basics"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rcu(1) - basics&body=Check out this article: https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&title=rcu(1) - basics"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&name=rcu(1) - basics&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/02/19/2025-0219-rcu-basics/&t=rcu(1) - basics"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

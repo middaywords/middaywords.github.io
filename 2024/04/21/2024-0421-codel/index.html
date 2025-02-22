@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="controlling queue delayReference: Controlling Queue Delay - ACM Queue  Tranlated by Kimi。 Modern AQM 只是 bufferbloat 的解决方案之一。 bufferbloat 的问题已经被发现 30 年了，今天还是存在。首先，廉价的内存和“越多越好”的心态导致了缓冲区的膨胀和扩散。其次，动态变化的路径">
 <meta property="og:type" content="article">
-<meta property="og:title" content="paper-notes controlling queue delay[QUEUE2012]">
+<meta property="og:title" content="paper-notes - controlling queue delay[QUEUE2012]">
 <meta property="og:url" content="https://middaywords.github.io/2024/04/21/2024-0421-codel/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
 <meta property="og:description" content="controlling queue delayReference: Controlling Queue Delay - ACM Queue  Tranlated by Kimi。 Modern AQM 只是 bufferbloat 的解决方案之一。 bufferbloat 的问题已经被发现 30 年了，今天还是存在。首先，廉价的内存和“越多越好”的心态导致了缓冲区的膨胀和扩散。其次，动态变化的路径">
@@ -24,7 +24,7 @@
 <meta property="og:image" content="https://dl.acm.org/cms/attachment/7584cd3c-4874-4de5-a817-01ce9bdac328/nichols9.png">
 <meta property="og:image" content="https://dl.acm.org/cms/attachment/f82efc64-ad9b-4bfd-a31c-a7be7cbf8bc6/nichols_tab1.png">
 <meta property="article:published_time" content="2024-04-21T04:49:34.000Z">
-<meta property="article:modified_time" content="2024-09-15T14:36:43.693Z">
+<meta property="article:modified_time" content="2025-01-05T16:46:02.809Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="network">
 <meta property="article:tag" content="paper">
@@ -49,7 +49,7 @@
       
     
     <!-- title -->
-    <title>paper-notes controlling queue delay[QUEUE2012]</title>
+    <title>paper-notes - controlling queue delay[QUEUE2012]</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -67,6 +67,16 @@
     
     
 	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
 	
 <meta name="generator" content="Hexo 6.3.0"></head>
 
@@ -111,16 +121,16 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&text=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&is_video=false&description=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes controlling queue delay[QUEUE2012]&body=Check out this article: https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&name=paper-notes controlling queue delay[QUEUE2012]&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/&t=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&text=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&is_video=false&description=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes - controlling queue delay[QUEUE2012]&body=Check out this article: https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&name=paper-notes - controlling queue delay[QUEUE2012]&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/&t=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -140,7 +150,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        paper-notes controlling queue delay[QUEUE2012]
+        paper-notes - controlling queue delay[QUEUE2012]
     </h1>
 
 
@@ -271,16 +281,16 @@
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&text=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&is_video=false&description=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes controlling queue delay[QUEUE2012]&body=Check out this article: https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&name=paper-notes controlling queue delay[QUEUE2012]&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/&t=paper-notes controlling queue delay[QUEUE2012]"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&text=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&is_video=false&description=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes - controlling queue delay[QUEUE2012]&body=Check out this article: https://middaywords.github.io/2024/04/21/2024-0421-codel/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&title=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/21/2024-0421-codel/&name=paper-notes - controlling queue delay[QUEUE2012]&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/21/2024-0421-codel/&t=paper-notes - controlling queue delay[QUEUE2012]"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -303,7 +313,7 @@
     Copyright &copy;
     
     
-    2016-2024
+    2016-2025
     Kangjie Xu
   </div>
   <div class="footer-right">

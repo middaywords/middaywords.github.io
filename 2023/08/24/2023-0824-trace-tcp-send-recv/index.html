@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="[TOC] trace tcp connect&#x2F;send&#x2F;recv这里用 ftrace 记录下 tcp send&#x2F;recv 的主要调用路径。一方面是查代码总是看调用路径很麻烦，另一方面是 ftrace 的那些操作流程每次都得查一会儿，干脆写一遍笔记记录下，以后方便查。 machine info: 12345678root@hn2shz:&#x2F;sys&#x2F;kernel&#x2F;debu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="use ftrace&#x2F;stackcount to find tcp connect&#x2F;send&#x2F;recv stack">
+<meta property="og:url" content="https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="[TOC] trace tcp connect&#x2F;send&#x2F;recv这里用 ftrace 记录下 tcp send&#x2F;recv 的主要调用路径。一方面是查代码总是看调用路径很麻烦，另一方面是 ftrace 的那些操作流程每次都得查一会儿，干脆写一遍笔记记录下，以后方便查。 machine info: 12345678root@hn2shz:&#x2F;sys&#x2F;kernel&#x2F;debu">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-08-24T05:19:45.000Z">
+<meta property="article:modified_time" content="2025-01-05T16:41:51.670Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="tcp">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>use ftrace/stackcount to find tcp connect/send/recv stack</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/09/01/2023-0901-skb-details/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/08/17/2023-0817-iptables-legacy-save-and-restore/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&text=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&is_video=false&description=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=use ftrace/stackcount to find tcp connect/send/recv stack&body=Check out this article: https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&name=use ftrace/stackcount to find tcp connect/send/recv stack&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&t=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#trace-tcp-connect-send-recv"><span class="toc-number">1.</span> <span class="toc-text">trace tcp connect&#x2F;send&#x2F;recv</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ftrace-hands-on"><span class="toc-number">1.1.</span> <span class="toc-text">ftrace hands-on</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#client-connect-SYN-SENT"><span class="toc-number">1.2.</span> <span class="toc-text">client connect (-&gt;SYN_SENT)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Server-send-back-SYN-ACK-LISTEN-SYN-RECV"><span class="toc-number">1.3.</span> <span class="toc-text">Server send back SYN+ACK(LISTEN-&gt;SYN_RECV)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#client-handle-SYN-ACK-SYN-SENT-ESTABLISHED"><span class="toc-number">1.4.</span> <span class="toc-text">client handle SYN+ACK(SYN_SENT-&gt;ESTABLISHED)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Server-handle-ACK-SYN-RECV-ESTABLISHED"><span class="toc-number">1.5.</span> <span class="toc-text">Server handle ACK (SYN_RECV-&gt;ESTABLISHED)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#server-accept"><span class="toc-number">1.6.</span> <span class="toc-text">server accept</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcp-send"><span class="toc-number">1.7.</span> <span class="toc-text">tcp send</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcp-recv"><span class="toc-number">1.8.</span> <span class="toc-text">tcp recv</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        use ftrace/stackcount to find tcp connect/send/recv stack
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-08-24T05:19:45.000Z" class="dt-published" itemprop="datePublished">2023-08-24</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/network/" rel="tag">network</a>, <a class="p-category" href="/tags/tcp/" rel="tag">tcp</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>[TOC]</p>
+<h2 id="trace-tcp-connect-send-recv"><a href="#trace-tcp-connect-send-recv" class="headerlink" title="trace tcp connect&#x2F;send&#x2F;recv"></a>trace tcp connect&#x2F;send&#x2F;recv</h2><p>这里用 ftrace 记录下 tcp send&#x2F;recv 的主要调用路径。一方面是查代码总是看调用路径很麻烦，另一方面是 ftrace 的那些操作流程每次都得查一会儿，干脆写一遍笔记记录下，以后方便查。</p>
+<p>machine info:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root@hn2shz:/sys/kernel/debug/tracing# uname -r</span><br><span class="line">5.15.0-26-generic</span><br><span class="line">root@hn2shz:/sys/kernel/debug/tracing# lsb_release -a</span><br><span class="line">No LSB modules are available.</span><br><span class="line">Distributor ID:	Ubuntu</span><br><span class="line">Description:	Ubuntu 22.04.2 LTS</span><br><span class="line">Release:	22.04</span><br><span class="line">Codename:	jammy</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="ftrace-hands-on"><a href="#ftrace-hands-on" class="headerlink" title="ftrace hands-on"></a>ftrace hands-on</h3><p>ftrace 有 function 和 function_graph 两种模式，这里面我们用 function graph 来看调用路径</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">cd /sys/kernel/debug/tracing</span><br><span class="line">echo 0 &gt; tracing_on # 关闭之前可能仍在tracing的任务</span><br><span class="line">echo &gt; trace # 清空之前的trace内容</span><br><span class="line">echo function_graph &gt; current_tracer # 设置tracer为function graph模式</span><br><span class="line">echo &gt; set_ftrace_filter # 清空输出中的filter</span><br><span class="line">echo tcp_v4_connect &gt; set_graph_function</span><br><span class="line">echo 1 &gt; tracing_on # 开始tracing</span><br><span class="line">echo 0 &gt; tracing_on # 停止tracing</span><br></pre></td></tr></table></figure>
+
+<p>另外，其实有个类似的 bcc 工具可以看函数调用栈，还挺方便的 <a target="_blank" rel="noopener" href="https://github.com/iovisor/bcc/blob/master/tools/stackcount_example.txt">bcc stackcount</a></p>
+<h3 id="client-connect-SYN-SENT"><a href="#client-connect-SYN-SENT" class="headerlink" title="client connect (-&gt;SYN_SENT)"></a>client connect (-&gt;SYN_SENT)</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br></pre></td><td class="code"><pre><span class="line">tcp_v4_connect</span><br><span class="line">    ip_route_output_key_hash</span><br><span class="line">    ip_route_output_ports</span><br><span class="line">    ip_route_output_flow</span><br><span class="line">    tcp_set_state TCP_SYN_SENT..</span><br><span class="line">    inet_hash_connect	<span class="comment">// 选择可用端口</span></span><br><span class="line">    security_sk_classify_flow</span><br><span class="line">    ip_route_output_flow</span><br><span class="line">    sk_setup_caps</span><br><span class="line">    secure_tcp_seq</span><br><span class="line">    secure_tcp_ts_off</span><br><span class="line">    tcp_fastopen_defer_connect</span><br><span class="line">    tcp_connect</span><br><span class="line">        inet_sk_rebuild_header</span><br><span class="line">        tcp_connect_init &#123;</span><br><span class="line">            tcp_v4_md5_lookup;</span><br><span class="line">            tcp_mtup_init;</span><br><span class="line">            ipv4_mtu;</span><br><span class="line">            tcp_sync_mss;</span><br><span class="line">            ipv4_default_advmss;</span><br><span class="line">            tcp_initialize_rcv_mss;</span><br><span class="line">            tcp_select_initial_window;</span><br><span class="line">            tcp_write_queue_purge </span><br><span class="line">            tcp_chrono_stop;</span><br><span class="line">            tcp_clear_retrans;</span><br><span class="line">        sk_stream_alloc_skb</span><br><span class="line">        	__alloc_skb</span><br><span class="line">        tcp_rbtree_insert</span><br><span class="line">        __tcp_transmit_skb</span><br><span class="line">            skb_clone</span><br><span class="line">            ipv4_default_advmss</span><br><span class="line">            bpf_skops_hdr_opt_len.isra<span class="number">.0</span></span><br><span class="line">            skb_push</span><br><span class="line">            tcp_options_write</span><br><span class="line">            bpf_skops_write_hdr_opt.isra<span class="number">.0</span></span><br><span class="line">            tcp_v4_send_check</span><br><span class="line">            ip_queue_xmit</span><br><span class="line">        inet_csk_reset_xmit_timer <span class="comment">// 启动重传定时器</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="Server-send-back-SYN-ACK-LISTEN-SYN-RECV"><a href="#Server-send-back-SYN-ACK-LISTEN-SYN-RECV" class="headerlink" title="Server send back SYN+ACK(LISTEN-&gt;SYN_RECV)"></a>Server send back SYN+ACK(LISTEN-&gt;SYN_RECV)</h3><p>后面收包的状态机相关的处理都在 <code>tcp_v4_do_rcv</code>-&gt; <code>tcp_rcv_state_process</code> 里面。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// L4</span></span><br><span class="line">tcp_conn_request</span><br><span class="line">    inet_reqsk_alloc	<span class="comment">// 分配 request_sock 内核对象</span></span><br><span class="line">    tcp_parse_options <span class="comment">// 解析 tcp options</span></span><br><span class="line">    tcp_v4_route_req	<span class="comment">// 查询路由</span></span><br><span class="line">    tcp_v4_init_ts_off	<span class="comment">// SO_TIMESTAMP 的处理</span></span><br><span class="line">    tcp_v4_init_seq			<span class="comment">// 初始化 SEQ</span></span><br><span class="line">    tcp_openreq_init_rwin	<span class="comment">// 初始化 rwin</span></span><br><span class="line">    tcp_try_fastopen		<span class="comment">// 初始化 rwnd</span></span><br><span class="line">    inet_csk_reqsk_queue_hash_add	<span class="comment">// 加入半连接队列</span></span><br><span class="line">    tcp_v4_send_synack</span><br><span class="line">        tcp_make_synack	<span class="comment">// 构造包</span></span><br><span class="line">            __alloc_skb</span><br><span class="line">            skb_set_owner_w</span><br><span class="line">            ipv4_default_advmss</span><br><span class="line">            tcp_v4_md5_lookup</span><br><span class="line">            skb_push</span><br><span class="line">            tcp_options_write</span><br><span class="line">        __tcp_v4_send_check </span><br><span class="line">      ip_build_and_send_pkt</span><br><span class="line">  </span><br></pre></td></tr></table></figure>
+
+<h3 id="client-handle-SYN-ACK-SYN-SENT-ESTABLISHED"><a href="#client-handle-SYN-ACK-SYN-SENT-ESTABLISHED" class="headerlink" title="client handle SYN+ACK(SYN_SENT-&gt;ESTABLISHED)"></a>client handle SYN+ACK(SYN_SENT-&gt;ESTABLISHED)</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br></pre></td><td class="code"><pre><span class="line">tcp_rcv_synsent_state_process</span><br><span class="line">	tcp_parse_options</span><br><span class="line">    tcp_ack</span><br><span class="line">    	tcp_sync_mss</span><br><span class="line">    	tcp_clean_rtx_queue</span><br><span class="line">    	tcp_rack_update_reo_wnd</span><br><span class="line">    	tcp_schedule_loss_probe</span><br><span class="line">    	tcp_rearm_rto</span><br><span class="line">    	tcp_newly_delivered</span><br><span class="line">    	tcp_rate_gen</span><br><span class="line">    	tcp_update_pacing_rate</span><br><span class="line">    tcp_sync_mss</span><br><span class="line">    tcp_finish_connect</span><br><span class="line">    	<span class="title function_">tcp_set_state</span><span class="params">(sk, TCP_ESTABLISHED)</span></span><br><span class="line">    	inet_sk_rx_dst_set</span><br><span class="line">    	tcp_init_transfer</span><br><span class="line">    		inet_sk_rebuild_header</span><br><span class="line">    		tcp_init_metrics</span><br><span class="line">    		tcp_init_congestion_control</span><br><span class="line">    		tcp_sndbuf_expand</span><br><span class="line">    		tcp_mstamp_refresh</span><br><span class="line">    tcp_send_ack</span><br><span class="line">    	__alloc_skb</span><br><span class="line">    	__tcp_transmit_skb</span><br><span class="line">    		tcp_established_options</span><br><span class="line">    		skb_push</span><br><span class="line">    		__tcp_select_window</span><br><span class="line">    		tcp_options_write</span><br><span class="line">    		tcp_v4_send_check</span><br><span class="line">    		ip_queue_xmit</span><br></pre></td></tr></table></figure>
+
+<h3 id="Server-handle-ACK-SYN-RECV-ESTABLISHED"><a href="#Server-handle-ACK-SYN-RECV-ESTABLISHED" class="headerlink" title="Server handle ACK (SYN_RECV-&gt;ESTABLISHED)"></a>Server handle ACK (SYN_RECV-&gt;ESTABLISHED)</h3><p><code>tcp_v4_rcv</code> -&gt; <code>tcp_check_req</code></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line">tcp_check_req</span><br><span class="line">    tcp_parse_options</span><br><span class="line">    tcp_v4_syn_recv_sock</span><br><span class="line">    	tcp_create_openreq_child</span><br><span class="line">    		inet_csk_clone_lock</span><br><span class="line">    		tcp_init_xmit_timers</span><br><span class="line">    		tcp_v6_md5_lookup</span><br><span class="line">    		tcp_bpf_clone</span><br><span class="line">    	inet_sk_rx_dst_set</span><br><span class="line">    	inet_csk_route_child_sock</span><br><span class="line">    		ip_route_output_flow	<span class="comment">// 查询路由</span></span><br><span class="line">    	sk_setup_caps</span><br><span class="line">    	tcp_ca_openreq_child</span><br><span class="line">    		tcp_assign_congestion_control</span><br><span class="line">    		cubictcp_state</span><br><span class="line">		ipv4_mtu</span><br><span class="line">    	tcp_sync_mss</span><br><span class="line">    	ipv4_default_advmss</span><br><span class="line">    	tcp_initialize_rcv_mss</span><br><span class="line">    	__inet_inherit_port</span><br><span class="line">    	inet_ehash_nolisten</span><br><span class="line">    tcp_sync_mss</span><br><span class="line">    tcp_synack_rtt_meas</span><br><span class="line">    inet_csk_complete_hashdance</span><br><span class="line">    </span><br></pre></td></tr></table></figure>
+
+<h3 id="server-accept"><a href="#server-accept" class="headerlink" title="server accept"></a>server accept</h3><p>accept 是从 icsk_accept_queue 里面拿出 sock，不涉及传输层的事情</p>
+<h3 id="tcp-send"><a href="#tcp-send" class="headerlink" title="tcp send"></a>tcp send</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">tcp_sendmsg/tcp_sendmsg_locked</span><br><span class="line">    tcp_rate_check_app_limited</span><br><span class="line">    tcp_send_mss</span><br><span class="line">    tcp_stream_memory_free</span><br><span class="line">    sk_stream_alloc_skb</span><br><span class="line">    skb_entail</span><br><span class="line">    sk_page_frag_refill</span><br><span class="line">    tcp_push</span><br><span class="line">    	__tcp_push_pending_frames</span><br><span class="line">    		tcp_write_xmit</span><br><span class="line">    			tcp_mtu_probe</span><br><span class="line">    			tcp_tso_segs</span><br><span class="line">    			tcp_small_queue_check <span class="comment">// TSQ feature</span></span><br><span class="line">    			__tcp_transmit_skb</span><br><span class="line">----------------</span><br><span class="line">__tcp_transmit_skb</span><br><span class="line">    skb_clone</span><br><span class="line">    tcp_established_options</span><br><span class="line">    skb_push</span><br><span class="line">    __tcp_select_window</span><br><span class="line">    tcp_options_write</span><br><span class="line">    tcp_v4_send_check</span><br><span class="line">    ip_queue_xmit</span><br></pre></td></tr></table></figure>
+
+<h3 id="tcp-recv"><a href="#tcp-recv" class="headerlink" title="tcp recv"></a>tcp recv</h3><figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br></pre></td><td class="code"><pre><span class="line">tcp_rcv_established</span><br><span class="line">    tcp_mstamp_refresh</span><br><span class="line">    tcp_queue_rcv</span><br><span class="line">    tcp_event_data_recv</span><br><span class="line">    tcp_ack</span><br><span class="line">    	tcp_clean_rtx_queue</span><br><span class="line">    		tcp_rack_advance</span><br><span class="line">    		tcp_rate_skb_delivered</span><br><span class="line">    		tcp_ack_tstamp</span><br><span class="line">    		__kfree_skb</span><br><span class="line">    		tcp_chrono_stop</span><br><span class="line">    		tcp_ack_update_rtt <span class="comment">// bpf ?</span></span><br><span class="line">    		cubictcp_acked</span><br><span class="line">    	tcp_rack_update_reo_wnd</span><br><span class="line">    	tcp_schedule_loss_probe</span><br><span class="line">    	tcp_rearm_rto</span><br><span class="line">    	tcp_newly_delivered</span><br><span class="line">    	tcp_rate_gen</span><br><span class="line">    	cubictcp_cong_avoid</span><br><span class="line">    	tcp_update_pacing_rate</span><br><span class="line">    tcp_check_space</span><br><span class="line">    __tcp_ack_snd_check</span><br><span class="line">    	tcp_send_ack</span><br><span class="line">            __alloc_skb</span><br><span class="line">            __tcp_transmit_skb</span><br><span class="line">    tcp_data_ready <span class="comment">// 唤醒socket上阻塞的进程</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#trace-tcp-connect-send-recv"><span class="toc-number">1.</span> <span class="toc-text">trace tcp connect&#x2F;send&#x2F;recv</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ftrace-hands-on"><span class="toc-number">1.1.</span> <span class="toc-text">ftrace hands-on</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#client-connect-SYN-SENT"><span class="toc-number">1.2.</span> <span class="toc-text">client connect (-&gt;SYN_SENT)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Server-send-back-SYN-ACK-LISTEN-SYN-RECV"><span class="toc-number">1.3.</span> <span class="toc-text">Server send back SYN+ACK(LISTEN-&gt;SYN_RECV)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#client-handle-SYN-ACK-SYN-SENT-ESTABLISHED"><span class="toc-number">1.4.</span> <span class="toc-text">client handle SYN+ACK(SYN_SENT-&gt;ESTABLISHED)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Server-handle-ACK-SYN-RECV-ESTABLISHED"><span class="toc-number">1.5.</span> <span class="toc-text">Server handle ACK (SYN_RECV-&gt;ESTABLISHED)</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#server-accept"><span class="toc-number">1.6.</span> <span class="toc-text">server accept</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcp-send"><span class="toc-number">1.7.</span> <span class="toc-text">tcp send</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#tcp-recv"><span class="toc-number">1.8.</span> <span class="toc-text">tcp recv</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&text=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&is_video=false&description=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=use ftrace/stackcount to find tcp connect/send/recv stack&body=Check out this article: https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&title=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&name=use ftrace/stackcount to find tcp connect/send/recv stack&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/24/2023-0824-trace-tcp-send-recv/&t=use ftrace/stackcount to find tcp connect/send/recv stack"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

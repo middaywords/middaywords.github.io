@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="linux tc 系列(2) - tc bpfTC bpf 在 cilium 里用的很多，但是之前一直了解得不太多。最近在看些相关的东西，于是记一些相关的东西。 TC bpf management我们可以从 tc bpf 的查询接口管中窥豹。 12345678910&#x2F;&#x2F; net&#x2F;sched&#x2F;cls_bpf.ccls_bpf_dump    cls_bpf_dump_ebpf_info    cls">
+<meta property="og:type" content="article">
+<meta property="og:title" content="linux tc (2) - tc-bpf">
+<meta property="og:url" content="https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="linux tc 系列(2) - tc bpfTC bpf 在 cilium 里用的很多，但是之前一直了解得不太多。最近在看些相关的东西，于是记一些相关的东西。 TC bpf management我们可以从 tc bpf 的查询接口管中窥豹。 12345678910&#x2F;&#x2F; net&#x2F;sched&#x2F;cls_bpf.ccls_bpf_dump    cls_bpf_dump_ebpf_info    cls">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-11-13T09:27:25.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.697Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="bpf">
+<meta property="article:tag" content="tc">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>linux tc (2) - tc-bpf</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2024/01/02/2024-0102-linux-tc-fq/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/10/26/2023-1026-bpf-verifier-3/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&text=linux tc (2) - tc-bpf"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&is_video=false&description=linux tc (2) - tc-bpf"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (2) - tc-bpf&body=Check out this article: https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&name=linux tc (2) - tc-bpf&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&t=linux tc (2) - tc-bpf"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-2-tc-bpf"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(2) - tc bpf</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TC-bpf-management"><span class="toc-number">1.1.</span> <span class="toc-text">TC bpf management</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-bpf-create-load"><span class="toc-number">1.2.</span> <span class="toc-text">tc bpf create&#x2F;load</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.3.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        linux tc (2) - tc-bpf
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-11-13T09:27:25.000Z" class="dt-published" itemprop="datePublished">2023-11-13</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/tc/" rel="tag">tc</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h1 id="linux-tc-系列-2-tc-bpf"><a href="#linux-tc-系列-2-tc-bpf" class="headerlink" title="linux tc 系列(2) - tc bpf"></a>linux tc 系列(2) - tc bpf</h1><p>TC bpf 在 cilium 里用的很多，但是之前一直了解得不太多。最近在看些相关的东西，于是记一些相关的东西。</p>
+<h2 id="TC-bpf-management"><a href="#TC-bpf-management" class="headerlink" title="TC bpf management"></a>TC bpf management</h2><p>我们可以从 tc bpf 的查询接口管中窥豹。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/sched/cls_bpf.c</span></span><br><span class="line">cls_bpf_dump</span><br><span class="line">    cls_bpf_dump_ebpf_info</span><br><span class="line">    cls_bpf_dump_bpf_info</span><br><span class="line">    	<span class="title function_">nla_put_u32</span><span class="params">(skb, TCA_BPF_ID, prog-&gt;filter-&gt;aux-&gt;id)</span></span><br><span class="line"></span><br><span class="line">tc_dump_tfilter</span><br><span class="line">    tcf_chain_dump</span><br><span class="line">        tcf_node_dump</span><br><span class="line">            tp-&gt;ops-&gt;dump</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="tc-bpf-create-load"><a href="#tc-bpf-create-load" class="headerlink" title="tc bpf create&#x2F;load"></a>tc bpf create&#x2F;load</h2><p>对于 filter 类型， cls_bpf.c 中有相关定义。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">cls_bpf_prog_from_ops</span><br><span class="line">    bpf_prog_create - create an unattached filter</span><br><span class="line">        bpf_check_basics_ok</span><br><span class="line">        bpf_prog_alloc</span><br><span class="line">        bpf_prepare_filter</span><br><span class="line">            bpf_check_classic - verify socket filter code</span><br><span class="line">cls_bpf_prog_from_efd - bpf program from an existing fd</span><br><span class="line">	bpf_prog_get_type_dev</span><br><span class="line">	</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li>在 sch_handle_ingress 与 sch_handle_egress 两个点（未进入 qdisc），调用 <code>tcf_classify</code></li>
+</ol>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">__netif_receive_skb_core</span><br><span class="line">    sch_handle_egress</span><br><span class="line">    sch_handle_ingress</span><br><span class="line">        tc_run [net/core/dev.c]</span><br><span class="line">            tcf_classify [net/sched/cls_api.c]</span><br><span class="line">                __tcf_classify</span><br><span class="line">                    cls_bpf_classify</span><br><span class="line">                        -&gt;classify() [net/sched/cls_bpf.c]</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_NET_XGRESS</span></span><br><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">tc_run</span><span class="params">(<span class="keyword">struct</span> tcx_entry *entry, <span class="keyword">struct</span> sk_buff *skb)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> ret = TC_ACT_UNSPEC;</span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_NET_CLS_ACT</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">mini_Qdisc</span> *<span class="title">miniq</span> =</span> rcu_dereference_bh(entry-&gt;miniq);</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">tcf_result</span> <span class="title">res</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!miniq)</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">	mini_qdisc_bstats_cpu_update(miniq, skb);</span><br><span class="line">	ret = tcf_classify(skb, miniq-&gt;block, miniq-&gt;filter_list, &amp;res, <span class="literal">false</span>);</span><br><span class="line">    <span class="comment">/* Only tcf related quirks below. */</span></span><br><span class="line">	<span class="keyword">switch</span> (ret) &#123;</span><br><span class="line">	<span class="keyword">case</span> TC_ACT_SHOT:</span><br><span class="line">		mini_qdisc_qstats_cpu_drop(miniq);</span><br><span class="line">		<span class="keyword">break</span>;</span><br><span class="line">	<span class="keyword">case</span> TC_ACT_OK:</span><br><span class="line">	<span class="keyword">case</span> TC_ACT_RECLASSIFY:</span><br><span class="line">		skb-&gt;tc_index = TC_H_MIN(res.classid);</span><br><span class="line">		<span class="keyword">break</span>;</span><br><span class="line">	&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span> <span class="comment">/* CONFIG_NET_CLS_ACT */</span></span></span><br></pre></td></tr></table></figure>
+
+<ol start="2">
+<li>在 qdisc 中，会调用 <code>tcf_classify</code> 进行分类。对于不同的 qdisc 类型，会有不同的含义，我们以 htb 为例</li>
+</ol>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// net/sched/sch_htb.c</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">struct</span> htb_class *<span class="title function_">htb_classify</span><span class="params">(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> Qdisc *sch,</span></span><br><span class="line"><span class="params">				      <span class="type">int</span> *qerr)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    <span class="comment">// 根据 priority 找到 filter</span></span><br><span class="line">    <span class="keyword">if</span> (skb-&gt;priority == sch-&gt;handle)</span><br><span class="line">		<span class="keyword">return</span> HTB_DIRECT;	<span class="comment">/* X:0 (direct flow) selected */</span></span><br><span class="line">	cl = htb_find(skb-&gt;priority, sch);</span><br><span class="line">	<span class="keyword">if</span> (cl) &#123;</span><br><span class="line">		<span class="keyword">if</span> (cl-&gt;level == <span class="number">0</span>)</span><br><span class="line">			<span class="keyword">return</span> cl;</span><br><span class="line">		<span class="comment">/* Start with inner filter chain if a non-leaf class is selected */</span></span><br><span class="line">		tcf = rcu_dereference_bh(cl-&gt;filter_list);</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		tcf = rcu_dereference_bh(q-&gt;filter_list);</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 循环迭代 filter</span></span><br><span class="line">	<span class="keyword">while</span> (tcf &amp;&amp; (result = tcf_classify(skb, <span class="literal">NULL</span>, tcf, &amp;res, <span class="literal">false</span>)) &gt;= <span class="number">0</span>) &#123;</span><br><span class="line">        <span class="meta">#<span class="keyword">ifdef</span> CONFIG_NET_CLS_ACT</span></span><br><span class="line">		<span class="keyword">switch</span> (result) &#123;</span><br><span class="line">		<span class="keyword">case</span> TC_ACT_QUEUED:</span><br><span class="line">		<span class="keyword">case</span> TC_ACT_STOLEN:</span><br><span class="line">        <span class="comment">//...</span></span><br><span class="line">		&#125;</span><br><span class="line"><span class="meta">#<span class="keyword">endif</span></span></span><br><span class="line">        <span class="comment">// 找到 class</span></span><br><span class="line">		cl = (<span class="type">void</span> *)res.class;</span><br><span class="line">		<span class="keyword">if</span> (!cl) &#123;</span><br><span class="line">			<span class="keyword">if</span> (res.classid == sch-&gt;handle)</span><br><span class="line">				<span class="keyword">return</span> HTB_DIRECT;	<span class="comment">/* X:0 (direct flow) */</span></span><br><span class="line">			cl = htb_find(res.classid, sch);</span><br><span class="line">			<span class="keyword">if</span> (!cl)</span><br><span class="line">				<span class="keyword">break</span>;	<span class="comment">/* filter selected invalid classid */</span></span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">if</span> (!cl-&gt;level)</span><br><span class="line">            <span class="comment">// 叶子节点 class</span></span><br><span class="line">			<span class="keyword">return</span> cl;	<span class="comment">/* we hit leaf; return it */</span></span><br><span class="line"></span><br><span class="line">		<span class="comment">/* we have got inner class; apply inner filter chain */</span></span><br><span class="line">		tcf = rcu_dereference_bh(cl-&gt;filter_list);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="comment">// 根据结果返回分类</span></span><br><span class="line">	cl = htb_find(TC_H_MAKE(TC_H_MAJ(sch-&gt;handle), q-&gt;defcls), sch);</span><br><span class="line">    <span class="keyword">return</span> cl;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>我们看到 <code>net/sched/</code> 下一堆 <code>cls_*.c</code> 里则是一些 filter 的实现了。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br></pre></td><td class="code"><pre><span class="line">TC_INDIRECT_SCOPE <span class="type">int</span> <span class="title function_">cls_bpf_classify</span><span class="params">(<span class="keyword">struct</span> sk_buff *skb,</span></span><br><span class="line"><span class="params">				       <span class="type">const</span> <span class="keyword">struct</span> tcf_proto *tp,</span></span><br><span class="line"><span class="params">				       <span class="keyword">struct</span> tcf_result *res)</span> &#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    list_for_each_entry_rcu(prog, &amp;head-&gt;plist, link) &#123;</span><br><span class="line">		<span class="type">int</span> filter_res;</span><br><span class="line">        <span class="comment">// 运行 bpf_prog_run 拿到 filter_res</span></span><br><span class="line">        <span class="keyword">if</span> (tc_skip_sw(prog-&gt;gen_flags)) &#123;</span><br><span class="line">			filter_res = prog-&gt;exts_integrated ? TC_ACT_UNSPEC : <span class="number">0</span>;</span><br><span class="line">		&#125; <span class="keyword">else</span> <span class="keyword">if</span> (at_ingress) &#123;</span><br><span class="line">			<span class="comment">/* It is safe to push/pull even if skb_shared() */</span></span><br><span class="line">			__skb_push(skb, skb-&gt;mac_len);</span><br><span class="line">			bpf_compute_data_pointers(skb);</span><br><span class="line">			filter_res = bpf_prog_run(prog-&gt;filter, skb);</span><br><span class="line">			__skb_pull(skb, skb-&gt;mac_len);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			bpf_compute_data_pointers(skb);</span><br><span class="line">			filter_res = bpf_prog_run(prog-&gt;filter, skb);</span><br><span class="line">		&#125;</span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">        <span class="comment">// 根据 filter_rs 设置 结果 (cls_act 的情况)</span></span><br><span class="line">        <span class="keyword">if</span> (prog-&gt;exts_integrated) &#123; </span><br><span class="line">			res-&gt;<span class="class"><span class="keyword">class</span>   =</span> <span class="number">0</span>;</span><br><span class="line">			res-&gt;classid = TC_H_MAJ(prog-&gt;res.classid) |</span><br><span class="line">				       qdisc_skb_cb(skb)-&gt;tc_classid;</span><br><span class="line"></span><br><span class="line">			ret = cls_bpf_exec_opcode(filter_res);</span><br><span class="line">			<span class="keyword">if</span> (ret == TC_ACT_UNSPEC)</span><br><span class="line">				<span class="keyword">continue</span>;</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line">        <span class="comment">// 非 cls_act</span></span><br><span class="line">        <span class="keyword">if</span> (filter_res == <span class="number">0</span>)</span><br><span class="line">			<span class="keyword">continue</span>;</span><br><span class="line">		<span class="keyword">if</span> (filter_res != <span class="number">-1</span>) &#123;</span><br><span class="line">			res-&gt;<span class="class"><span class="keyword">class</span>   =</span> <span class="number">0</span>;</span><br><span class="line">			res-&gt;classid = filter_res;</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			*res = prog-&gt;res;</span><br><span class="line">		&#125;</span><br><span class="line">        <span class="comment">// 根据 class 执行 action</span></span><br><span class="line">        ret = tcf_exts_exec(skb, &amp;prog-&gt;exts, res);</span><br><span class="line">		<span class="keyword">if</span> (ret &lt; <span class="number">0</span>)</span><br><span class="line">			<span class="keyword">continue</span>;</span><br><span class="line"></span><br><span class="line">		<span class="keyword">break</span>;</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<p>而 <code>tcf_exts_exec</code> 则会调用到 <code>act_*.c</code> 里的 <code>-&gt;act()</code> 方法</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">//tcf_exts_exec</span></span><br><span class="line"><span class="comment">//-&gt; tcf_action_exec</span></span><br><span class="line"><span class="comment">//-&gt; tc_act</span></span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">tc_act</span><span class="params">(<span class="keyword">struct</span> sk_buff *skb, <span class="type">const</span> <span class="keyword">struct</span> tc_action *a,</span></span><br><span class="line"><span class="params">			   <span class="keyword">struct</span> tcf_result *res)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> a-&gt;ops-&gt;act(skb, a, res);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><p>[1] <a target="_blank" rel="noopener" href="https://arthurchiao.art/blog/understanding-tc-da-mode-zh/">[译] 深入理解 tc ebpf 的 direct-action (da) 模式（2020）</a></p>
+<p>[2] <a target="_blank" rel="noopener" href="https://cloud.tencent.com/developer/article/1626377">你的第一个TC BPF 程序</a></p>
+<p>[3] <a target="_blank" rel="noopener" href="https://yanhang.me/post/2021-tc-ebpf/">TC的一些有趣功能</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#linux-tc-%E7%B3%BB%E5%88%97-2-tc-bpf"><span class="toc-number">1.</span> <span class="toc-text">linux tc 系列(2) - tc bpf</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#TC-bpf-management"><span class="toc-number">1.1.</span> <span class="toc-text">TC bpf management</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#tc-bpf-create-load"><span class="toc-number">1.2.</span> <span class="toc-text">tc bpf create&#x2F;load</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">1.3.</span> <span class="toc-text">reference</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&text=linux tc (2) - tc-bpf"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&is_video=false&description=linux tc (2) - tc-bpf"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=linux tc (2) - tc-bpf&body=Check out this article: https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&title=linux tc (2) - tc-bpf"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&name=linux tc (2) - tc-bpf&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/11/13/2023-1113-linux-tc-bpf/&t=linux tc (2) - tc-bpf"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

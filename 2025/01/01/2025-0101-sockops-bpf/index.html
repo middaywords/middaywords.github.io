@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="Kernel version: 6.10  如 docs.ebpf.io 中所述，socket ops 是 attach 到 cgroup，在 socket 的 lifecycle 的特殊 event 里面被调用，从而改变 socket 的行为，做出一些特定的配置。  Socket ops programs are attached to cGroups and get called for m">
+<meta property="og:type" content="article">
+<meta property="og:title" content="about sockops bpf">
+<meta property="og:url" content="https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="Kernel version: 6.10  如 docs.ebpf.io 中所述，socket ops 是 attach 到 cgroup，在 socket 的 lifecycle 的特殊 event 里面被调用，从而改变 socket 的行为，做出一些特定的配置。  Socket ops programs are attached to cGroups and get called for m">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250104194346605.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250104200818061.png">
+<meta property="og:image" content="https://www.ibm.com/support/pages/system/files/inline-images/Flow%20chart%20TCP%20connection_0.jpg">
+<meta property="article:published_time" content="2025-01-01T02:23:46.000Z">
+<meta property="article:modified_time" content="2025-01-05T16:47:10.266Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="bpf">
+<meta property="article:tag" content="linux">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250104194346605.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>about sockops bpf</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2025/01/06/2025-0106-tcp-tuning/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2024/12/13/2024-1213-networking-timestamp/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&text=about sockops bpf"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&is_video=false&description=about sockops bpf"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=about sockops bpf&body=Check out this article: https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&name=about sockops bpf&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&t=about sockops bpf"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TIMEOUT-INIT"><span class="toc-number">1.</span> <span class="toc-text">BPF_SOCK_OPS_TIMEOUT_INIT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RWND-INIT"><span class="toc-number">2.</span> <span class="toc-text">BPF_SOCK_OPS_RWND_INIT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TCP-CONNECT-CB"><span class="toc-number">3.</span> <span class="toc-text">BPF_SOCK_OPS_TCP_CONNECT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-ACTIVE-ESTABLISHED-CB"><span class="toc-number">4.</span> <span class="toc-text">BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-PASSIVE-ESTABLISHED-CB"><span class="toc-number">5.</span> <span class="toc-text">BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-NEEDS-ECN"><span class="toc-number">6.</span> <span class="toc-text">BPF_SOCK_OPS_NEEDS_ECN</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-BASE-RTT"><span class="toc-number">7.</span> <span class="toc-text">BPF_SOCK_OPS_BASE_RTT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RTO-CB"><span class="toc-number">8.</span> <span class="toc-text">BPF_SOCK_OPS_RTO_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RETRANS-CB"><span class="toc-number">9.</span> <span class="toc-text">BPF_SOCK_OPS_RETRANS_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-STATE-CB"><span class="toc-number">10.</span> <span class="toc-text">BPF_SOCK_OPS_STATE_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TCP-LISTEN-CB"><span class="toc-number">11.</span> <span class="toc-text">BPF_SOCK_OPS_TCP_LISTEN_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RTT-CB"><span class="toc-number">12.</span> <span class="toc-text">BPF_SOCK_OPS_RTT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-PARSE-HDR-OPT-CB"><span class="toc-number">13.</span> <span class="toc-text">BPF_SOCK_OPS_PARSE_HDR_OPT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-HDR-OPT-LEN-CB"><span class="toc-number">14.</span> <span class="toc-text">BPF_SOCK_OPS_HDR_OPT_LEN_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-WRITE-HDR-OPT-CB"><span class="toc-number">15.</span> <span class="toc-text">BPF_SOCK_OPS_WRITE_HDR_OPT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E4%BA%8E-tcp-call-bpf"><span class="toc-number">16.</span> <span class="toc-text">关于 tcp_call_bpf</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        about sockops bpf
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-01-01T02:23:46.000Z" class="dt-published" itemprop="datePublished">2025-01-01</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/linux/" rel="tag">linux</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <blockquote>
+<p>Kernel version: 6.10</p>
+</blockquote>
+<p>如 <a target="_blank" rel="noopener" href="https://docs.ebpf.io/linux/program-type/BPF_PROG_TYPE_SOCK_OPS/">docs.ebpf.io</a> 中所述，socket ops 是 attach 到 cgroup，在 socket 的 lifecycle 的特殊 event 里面被调用，从而改变 socket 的行为，做出一些特定的配置。</p>
+<blockquote>
+<p>Socket ops programs are attached to cGroups and get called for multiple lifecycle events of a socket, giving the program the opportunity to changes settings per connection or to record the existence of a socket.</p>
+</blockquote>
+<p>在 <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.12.6/source/include/uapi/linux/bpf.h#L6910">kernel source code</a> 中，我们能看到现有的一些 socket ops Operator 类型。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* List of known BPF sock_ops operators.</span></span><br><span class="line"><span class="comment"> * New entries can only be added at the end</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="class"><span class="keyword">enum</span> &#123;</span></span><br><span class="line">	BPF_SOCK_OPS_VOID,</span><br><span class="line">	BPF_SOCK_OPS_TIMEOUT_INIT,</span><br><span class="line">	BPF_SOCK_OPS_RWND_INIT,</span><br><span class="line">	BPF_SOCK_OPS_TCP_CONNECT_CB,</span><br><span class="line">	BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB,</span><br><span class="line">	BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB,</span><br><span class="line">	BPF_SOCK_OPS_NEEDS_ECN,</span><br><span class="line">	BPF_SOCK_OPS_BASE_RTT,</span><br><span class="line">	BPF_SOCK_OPS_RTO_CB,</span><br><span class="line">	BPF_SOCK_OPS_RETRANS_CB,</span><br><span class="line">	BPF_SOCK_OPS_STATE_CB,</span><br><span class="line">	BPF_SOCK_OPS_TCP_LISTEN_CB,</span><br><span class="line">	BPF_SOCK_OPS_RTT_CB,</span><br><span class="line">	BPF_SOCK_OPS_PARSE_HDR_OPT_CB,</span><br><span class="line">	BPF_SOCK_OPS_HDR_OPT_LEN_CB,</span><br><span class="line">	BPF_SOCK_OPS_WRITE_HDR_OPT_CB,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>这篇文章中，我们逐个分析各个 operator 的调用过程，能够很好地帮助我们理解 socket 的一些重要行为。</p>
+<h3 id="BPF-SOCK-OPS-TIMEOUT-INIT"><a href="#BPF-SOCK-OPS-TIMEOUT-INIT" class="headerlink" title="BPF_SOCK_OPS_TIMEOUT_INIT"></a>BPF_SOCK_OPS_TIMEOUT_INIT</h3><p>自定义 socket 的 <em>SYN-RTO</em> 包的 timeout 时间，在几个点中有 hook。实现在 <code>tcp_timeout_init</code>中，配置 timeout 之后，server 端会调用 <code>af_ops-&gt;send_synack()</code> 发送 syn-ack 包，client 端会</p>
+<ul>
+<li><code>tcp_fastopen_create_child</code>:  server 接收到 syn 包后创建连接时使用 fastopen 模式。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">-&gt; conn_request()</span><br><span class="line">	-&gt; tcp_v4_conn_request()</span><br><span class="line">		-&gt; tcp_conn_request()</span><br><span class="line">			-&gt; tcp_try_fast_open()</span><br><span class="line">				-&gt; tcp_fastopen_create_child()</span><br><span class="line">        	-&gt; tcp_timeout_init()</span><br><span class="line">req-&gt;timeout = tcp_timeout_init((struct sock *)req);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_conn_request</code>:  server 接收到 syn 包后，创建连接时使用非 fast open 模式。</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-&gt; conn_request()</span><br><span class="line">	-&gt; tcp_timeout_init()</span><br><span class="line">req-&gt;timeout = tcp_timeout_init((struct sock *)req);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_connect</code>：client 调用 connect 后，创建连接配置 syn 包 timeout</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_connect</span><br><span class="line">	-&gt; tcp_connect_init</span><br><span class="line">		-&gt; tcp_timeout_init</span><br><span class="line">inet_csk(sk)-&gt;icsk_rto = tcp_timeout_init(sk);</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_retransmit_timer</code>: 重传设置 timer，当已经发了 syn 包，等待 synack 的时候，判断重传包是否 time out</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_retransmit_timer</span><br><span class="line">	-&gt; tcp_write_timeout</span><br><span class="line">		-&gt; retransmits_timed_out</span><br><span class="line">			-&gt; tcp_timeout_init(sk)</span><br><span class="line"></span><br><span class="line">if ((1 &lt;&lt; sk-&gt;sk_state) &amp; (TCPF_SYN_SENT | TCPF_SYN_RECV))</span><br><span class="line">  rto_base = tcp_timeout_init(sk);</span><br><span class="line">timeout = tcp_model_timeout(sk, boundary, rto_base);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-RWND-INIT"><a href="#BPF-SOCK-OPS-RWND-INIT" class="headerlink" title="BPF_SOCK_OPS_RWND_INIT"></a>BPF_SOCK_OPS_RWND_INIT</h3><p>实现在 tcp_rwnd_init_bpf 函数中。在线上环境中，比如已经看到 rwnd 比较小，限制了性能等，我们可以动态调整这个值。（可能大 RTT 的时候，rwnd 小造成一些瓶颈）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_connect</span><br><span class="line">	-&gt; tcp_connect_init</span><br><span class="line">		-&gt; tcp_rwnd_init_bpf</span><br></pre></td></tr></table></figure>
+
+<p>可以参考 <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.12.6/source/samples/bpf/tcp_rwnd_kern.c#L25">sample prog 1</a> 和 <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.12.6/source/samples/bpf/tcp_bufs_kern.c#L26">sample prog 2</a></p>
+<h3 id="BPF-SOCK-OPS-TCP-CONNECT-CB"><a href="#BPF-SOCK-OPS-TCP-CONNECT-CB" class="headerlink" title="BPF_SOCK_OPS_TCP_CONNECT_CB"></a>BPF_SOCK_OPS_TCP_CONNECT_CB</h3><p>在发 SYN 包之前，刚 initialize a new connection 的时候</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Build a SYN and send it off. */</span></span><br><span class="line"><span class="type">int</span> <span class="title function_">tcp_connect</span><span class="params">(<span class="keyword">struct</span> sock *sk)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">	tcp_call_bpf(sk, BPF_SOCK_OPS_TCP_CONNECT_CB, <span class="number">0</span>, <span class="literal">NULL</span>);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-ACTIVE-ESTABLISHED-CB"><a href="#BPF-SOCK-OPS-ACTIVE-ESTABLISHED-CB" class="headerlink" title="BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB"></a>BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB</h3><p>在 tcp connection 由 syn sent 进入 established 状态时，调用相关 bpf（由于是主动发起 connect 的一方，故称为 active established）</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">tcp_finish_connect</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="keyword">struct</span> sk_buff *skb)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  tcp_init_transfer(sk, BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB, skb);</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_rcv_synsent_state_process()</span><br><span class="line">	-&gt; tcp_finish_connect()</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-PASSIVE-ESTABLISHED-CB"><a href="#BPF-SOCK-OPS-PASSIVE-ESTABLISHED-CB" class="headerlink" title="BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB"></a>BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB</h3><p>在 tcp connection 由 syn recv 进入 established 状态时，调用相关 bpf（由于是被动接受 connect 的一方，故称为 passive established）</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_rcv_state_process()</span><br><span class="line">	-&gt; tcp_init_transfer(sk, BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB, skb);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">tcp_rcv_state_process</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="keyword">struct</span> sk_buff *skb)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  SKB_DR_SET(reason, NOT_SPECIFIED);</span><br><span class="line">	<span class="keyword">switch</span> (sk-&gt;sk_state) &#123;</span><br><span class="line">	<span class="keyword">case</span> TCP_SYN_RECV:</span><br><span class="line">		tp-&gt;delivered++; <span class="comment">/* SYN-ACK delivery isn&#x27;t tracked in tcp_ack */</span></span><br><span class="line">		<span class="keyword">if</span> (!tp-&gt;srtt_us)</span><br><span class="line">			tcp_synack_rtt_meas(sk, req);</span><br><span class="line">		<span class="keyword">if</span> (req) &#123;</span><br><span class="line">			tcp_rcv_synrecv_state_fastopen(sk);</span><br><span class="line">		&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">			tcp_try_undo_spurious_syn(sk);</span><br><span class="line">			tp-&gt;retrans_stamp = <span class="number">0</span>;</span><br><span class="line">			tcp_init_transfer(sk, BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB,</span><br><span class="line">					  skb);</span><br><span class="line">  <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-NEEDS-ECN"><a href="#BPF-SOCK-OPS-NEEDS-ECN" class="headerlink" title="BPF_SOCK_OPS_NEEDS_ECN"></a>BPF_SOCK_OPS_NEEDS_ECN</h3><p>相关 sockops 的 operator 实现在</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">bool</span> <span class="title function_">tcp_bpf_ca_needs_ecn</span><span class="params">(<span class="keyword">struct</span> sock *sk)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">return</span> (tcp_call_bpf(sk, BPF_SOCK_OPS_NEEDS_ECN, <span class="number">0</span>, <span class="literal">NULL</span>) == <span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_conn_request</code>: server 接收到 syn 包后，创建连接，是否 enable ecn</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_conn_request</span><br><span class="line">	-&gt; tcp_ecn_create_request</span><br><span class="line">		-&gt; tcp_bpf_ca_needs_ecn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_v4_send_synack</code>:  server 接收到 syn 后，回 syn-ack 包</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-&gt; conn_request()</span><br><span class="line">	-&gt; send_synack()</span><br><span class="line">    -&gt; tcp_v4_send_synack</span><br><span class="line">      -&gt; tcp_bpf_ca_needs_ecn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_connect</code>: client 发起连接的时候，控制是否 enable ECN</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_connect</span><br><span class="line">	-&gt; tcp_ecn_send_syn</span><br><span class="line">		-&gt; tcp_bpf_ca_needs_ecn</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>tcp_rcv_state_process/tcp_rcv_synsent_state_process</code>: 收到一个重复的 syn 包后，回 synack 时需要考虑是否 enable ecn</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_rcv_state_process</span><br><span class="line">	-&gt; tcp_rcv_synsent_state_process</span><br><span class="line">		-&gt; tcp_send_synack</span><br><span class="line">			-&gt; tcp_ecn_send_synack</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-BASE-RTT"><a href="#BPF-SOCK-OPS-BASE-RTT" class="headerlink" title="BPF_SOCK_OPS_BASE_RTT"></a>BPF_SOCK_OPS_BASE_RTT</h3><p>只有 TCP new vegas(TCP NV) 会使用这种 sockops bpf 程序。TCP NV 比较推荐用在数据中心内部的连接。通过 bpf，我们可以有一些关于数据中心内部 RTT 的先验估计。从而使得对 BDP 的估计更加准确。</p>
+<p>关于 TCP new vegas，可以参考 <a target="_blank" rel="noopener" href="https://docs.google.com/document/d/1o-53jbO_xH-m9g2YCgjaf5bK8vePjWP6Mk0rYiRLK-U/edit?pli=1&tab=t.0#heading=h.8iwzuesrrwvo">TCP-NV: An Update to TCP-Vegas</a></p>
+<h3 id="BPF-SOCK-OPS-RTO-CB"><a href="#BPF-SOCK-OPS-RTO-CB" class="headerlink" title="BPF_SOCK_OPS_RTO_CB"></a>BPF_SOCK_OPS_RTO_CB</h3><p>Called when an RTO has triggered，timeout 发生就会调用相关的 bpf 程序</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_retransmit_timer</span><br><span class="line">	-&gt; tcp_write_timeout</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">tcp_write_timeout</span><span class="params">(<span class="keyword">struct</span> sock *sk)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">  <span class="keyword">if</span> (BPF_SOCK_OPS_TEST_FLAG(tp, BPF_SOCK_OPS_RTO_CB_FLAG))</span><br><span class="line">		tcp_call_bpf_3arg(sk, BPF_SOCK_OPS_RTO_CB,</span><br><span class="line">				  icsk-&gt;icsk_retransmits,</span><br><span class="line">				  icsk-&gt;icsk_rto, (<span class="type">int</span>)expired);</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-RETRANS-CB"><a href="#BPF-SOCK-OPS-RETRANS-CB" class="headerlink" title="BPF_SOCK_OPS_RETRANS_CB"></a>BPF_SOCK_OPS_RETRANS_CB</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_rcv_state_process</span><br><span class="line">-&gt; tcp_rcv_synsent_state_process</span><br><span class="line">-&gt; tcp_rcv_established</span><br><span class="line">  -&gt; tcp_ack</span><br><span class="line">    -&gt; tcp_xmit_recovery</span><br><span class="line">      -&gt; tcp_xmit_retransmit_queue</span><br><span class="line">      -&gt; tcp_retransmit_skb</span><br><span class="line">      -&gt; __tcp_retransmit_skb</span><br><span class="line"></span><br><span class="line">-&gt; tcp_rack_reo_timeout</span><br><span class="line">	-&gt; tcp_retransmit_skb</span><br><span class="line"></span><br><span class="line">-&gt; tcp_tsq_handler</span><br><span class="line">  -&gt; tcp_tsq_write</span><br><span class="line">    -&gt; tcp_xmit_retransmit_queue</span><br></pre></td></tr></table></figure>
+
+<p>重传的几种情况</p>
+<ul>
+<li><code>tcp_rack_reo_timeout</code>: RACK 算法的逻辑。</li>
+</ul>
+<blockquote>
+<p>We have waited long enough to accommodate reordering. Mark the expired packets lost and retransmit them.</p>
+</blockquote>
+<ul>
+<li><code>tcp_tsq_write</code>:  sch_fq 和 tsq 因为重传包，会导致问题。这个处理在 tsq 的 tasklet 里面。</li>
+</ul>
+<blockquote>
+<p>tcp: implement TSQ for retransmits</p>
+<p>We saw sch_fq drops caused by the per flow limit of 100 packets and TCP<br>when dealing with large cwnd and bursts of retransmits.</p>
+<p>Even after increasing the limit to 1000, and even after commit<br>10d3be569243 (“tcp-tso: do not split TSO packets at retransmit time”),<br>we can still have these drops.</p>
+<p>Under certain conditions, TCP can spend a considerable amount of<br>time queuing thousands of skbs in a single tcp_xmit_retransmit_queue()<br>invocation, incurring latency spikes and stalls of other softirq<br>handlers.</p>
+<p>This patch implements TSQ for retransmits, limiting number of packets<br>and giving more chance for scheduling packets in both ways.</p>
+<p>Signed-off-by: Eric Dumazet <a href="mailto:&#x65;&#100;&#x75;&#109;&#x61;&#x7a;&#101;&#116;&#64;&#103;&#x6f;&#x6f;&#x67;&#108;&#101;&#46;&#99;&#x6f;&#109;">&#x65;&#100;&#x75;&#109;&#x61;&#x7a;&#101;&#116;&#64;&#103;&#x6f;&#x6f;&#x67;&#108;&#101;&#46;&#99;&#x6f;&#109;</a><br>Signed-off-by: Yuchung Cheng <a href="mailto:&#x79;&#99;&#x68;&#101;&#x6e;&#103;&#x40;&#103;&#x6f;&#111;&#103;&#108;&#101;&#46;&#x63;&#111;&#x6d;">&#x79;&#99;&#x68;&#101;&#x6e;&#103;&#x40;&#103;&#x6f;&#111;&#103;&#108;&#101;&#46;&#x63;&#111;&#x6d;</a><br>Signed-off-by: Neal Cardwell <a href="mailto:&#110;&#99;&#x61;&#114;&#100;&#x77;&#x65;&#108;&#108;&#64;&#103;&#111;&#111;&#x67;&#108;&#101;&#x2e;&#99;&#x6f;&#109;">&#110;&#99;&#x61;&#114;&#100;&#x77;&#x65;&#108;&#108;&#64;&#103;&#111;&#111;&#x67;&#108;&#101;&#x2e;&#99;&#x6f;&#109;</a><br>Signed-off-by: David S. Miller <a href="mailto:&#x64;&#97;&#x76;&#x65;&#109;&#x40;&#x64;&#x61;&#118;&#x65;&#x6d;&#x6c;&#111;&#102;&#x74;&#x2e;&#110;&#x65;&#116;">&#x64;&#97;&#x76;&#x65;&#109;&#x40;&#x64;&#x61;&#118;&#x65;&#x6d;&#x6c;&#111;&#102;&#x74;&#x2e;&#110;&#x65;&#116;</a></p>
+</blockquote>
+<ul>
+<li><p><code>tcp_xmit_recovery</code>: 丢包导致的重传， 当 TCP connection 处于 CA_LOSS，或者处于 recovery state 的状态。</p>
+<p> <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.12.6/source/net/ipv4/tcp_input.c#L3060">https://elixir.bootlin.com/linux/v6.12.6/source/net/ipv4/tcp_input.c#L3060</a></p>
+</li>
+<li><p><code>tcp_non_congestion_loss_retransmit</code>: 代码中有详细的注释，当出现比如 MTU 变化或者其他原因等，推测不是 congestion 发生时，也需要重传，这种时候不需要减少 cwnd。</p>
+</li>
+</ul>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line">/* Sometimes we deduce that packets have been dropped due to reasons other than</span><br><span class="line"> * congestion, like path MTU reductions or failed client TFO attempts. In these</span><br><span class="line"> * cases we call this function to retransmit as many packets as cwnd allows,</span><br><span class="line"> * without reducing cwnd. Given that retransmits will set retrans_stamp to a</span><br><span class="line"> * non-zero value (and may do so in a later calling context due to TSQ), we</span><br><span class="line"> * also enter CA_Loss so that we track when all retransmitted packets are ACKed</span><br><span class="line"> * and clear retrans_stamp when that happens (to ensure later recurring RTOs</span><br><span class="line"> * are using the correct retrans_stamp and don&#x27;t declare ETIMEDOUT</span><br><span class="line"> * prematurely).</span><br><span class="line"> */</span><br><span class="line"> static void tcp_non_congestion_loss_retransmit(struct sock *sk)</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-STATE-CB"><a href="#BPF-SOCK-OPS-STATE-CB" class="headerlink" title="BPF_SOCK_OPS_STATE_CB"></a>BPF_SOCK_OPS_STATE_CB</h3><p>operator 在 <code>tcp_set_state()</code> 中调用</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">void</span> <span class="title function_">tcp_set_state</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="type">int</span> state)</span></span><br><span class="line">&#123;</span><br><span class="line">  <span class="comment">// ...</span></span><br><span class="line">	<span class="keyword">if</span> (BPF_SOCK_OPS_TEST_FLAG(tcp_sk(sk), BPF_SOCK_OPS_STATE_CB_FLAG))</span><br><span class="line">		tcp_call_bpf_2arg(sk, BPF_SOCK_OPS_STATE_CB, oldstate, state);</span><br><span class="line">  <span class="comment">// ...</span></span><br></pre></td></tr></table></figure>
+
+<p>调用链在下图中简要画了出来，可以看到 <code>tcp.c</code> 中是一些主动 syscall，或者说一些 protocol 的方法调用，导致 tcp socket 的状态变化。而 tcp_input.c 里面是一些收包后引起的状态变化。</p>
+<p><img src="/../figures/image-20250104194346605.png" alt="image-20250104194346605"></p>
+<p>下图中，我们可以看到收包过程的状态变化的调用链</p>
+<p><img src="/../figures/image-20250104200818061.png" alt="image-20250104200818061"></p>
+<p>可以结合 TCP 状态变化图一起看</p>
+<p><img src="https://www.ibm.com/support/pages/system/files/inline-images/Flow%20chart%20TCP%20connection_0.jpg" alt="TCP connection flowchart"></p>
+<h3 id="BPF-SOCK-OPS-TCP-LISTEN-CB"><a href="#BPF-SOCK-OPS-TCP-LISTEN-CB" class="headerlink" title="BPF_SOCK_OPS_TCP_LISTEN_CB"></a>BPF_SOCK_OPS_TCP_LISTEN_CB</h3><p>user 调用 listen() syscall 的时候会调用到 <code>__inet_listen_sk</code>，从而调用到这个 sockops 类型。</p>
+<h3 id="BPF-SOCK-OPS-RTT-CB"><a href="#BPF-SOCK-OPS-RTT-CB" class="headerlink" title="BPF_SOCK_OPS_RTT_CB"></a>BPF_SOCK_OPS_RTT_CB</h3><p>当收到 ack 包时，可以计算出相应的 packet 的 rtt。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">-&gt; tcp_ack</span><br><span class="line">  -&gt; tcp_clean_rtx_queue</span><br><span class="line">    -&gt; tcp_ack_update_rtt</span><br><span class="line">      -&gt; tcp_rtt_estimator</span><br><span class="line">        -&gt; tcp_bpf_rtt</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">void</span> <span class="title function_">tcp_bpf_rtt</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="type">long</span> mrtt, u32 srtt)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="keyword">if</span> (BPF_SOCK_OPS_TEST_FLAG(tcp_sk(sk), BPF_SOCK_OPS_RTT_CB_FLAG))</span><br><span class="line">		tcp_call_bpf_2arg(sk, BPF_SOCK_OPS_RTT_CB, mrtt, srtt);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>tcp_rtt_estimator 这个函数很有意思。可以参考 dog250 大佬的分析和另外一篇博客，讲的很好</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/12285984501">https://zhuanlan.zhihu.com/p/12285984501</a></li>
+<li><a target="_blank" rel="noopener" href="https://zhuanlan.zhihu.com/p/11992081640">https://zhuanlan.zhihu.com/p/11992081640</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.pagefault.info/2012/08/01/rto-calculation-in-tcp-and-implementation-under-linux.html">https://www.pagefault.info/2012/08/01/rto-calculation-in-tcp-and-implementation-under-linux.html</a></li>
+</ol>
+<p>另外提一句，每个 TCP packet 采样可以参考</p>
+<p> <a target="_blank" rel="noopener" href="https://blog.csdn.net/sinat_20184565/article/details/105000868">https://blog.csdn.net/sinat_20184565/article/details/105000868</a></p>
+<p>是通过 计算 <code>tcp_mstamp</code> 和 <code>skb_mstamp_ns</code> 的差值得到。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// in tcp_clean_rtx_queue()</span></span><br><span class="line">last_ackt = tcp_skb_timestamp_us(skb); <span class="comment">// 取 skb-&gt;skb_mstamp_ns 的值</span></span><br><span class="line"></span><br><span class="line">ca_rtt_us = tcp_stamp_us_delta(tp-&gt;tcp_mstamp, last_ackt);</span><br></pre></td></tr></table></figure>
+
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">tcp_sock</span> &#123;</span></span><br><span class="line">	<span class="comment">// ...</span></span><br><span class="line">	u64	tcp_mstamp;	<span class="comment">/* most recent packet received/sent */</span></span><br><span class="line">	<span class="comment">// ...</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="comment">/**</span></span><br><span class="line"><span class="comment"> *	struct sk_buff - socket buffer</span></span><br><span class="line"><span class="comment"> * ....</span></span><br><span class="line"><span class="comment"> *	@skb_mstamp_ns: (aka @tstamp) earliest departure time; start point</span></span><br><span class="line"><span class="comment"> *		for retransmit timer</span></span><br><span class="line"><span class="comment">**/</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="BPF-SOCK-OPS-PARSE-HDR-OPT-CB"><a href="#BPF-SOCK-OPS-PARSE-HDR-OPT-CB" class="headerlink" title="BPF_SOCK_OPS_PARSE_HDR_OPT_CB"></a>BPF_SOCK_OPS_PARSE_HDR_OPT_CB</h3><h3 id="BPF-SOCK-OPS-HDR-OPT-LEN-CB"><a href="#BPF-SOCK-OPS-HDR-OPT-LEN-CB" class="headerlink" title="BPF_SOCK_OPS_HDR_OPT_LEN_CB"></a>BPF_SOCK_OPS_HDR_OPT_LEN_CB</h3><h3 id="BPF-SOCK-OPS-WRITE-HDR-OPT-CB"><a href="#BPF-SOCK-OPS-WRITE-HDR-OPT-CB" class="headerlink" title="BPF_SOCK_OPS_WRITE_HDR_OPT_CB"></a>BPF_SOCK_OPS_WRITE_HDR_OPT_CB</h3><p>能够自定义修改、读取 tcp option。可以创造很多 use case :</p>
+<ol>
+<li>方便实验一些自定义的 tcp option。比如为了改善 nagle+delayed ack 导致的问题(譬如 <a target="_blank" rel="noopener" href="https://blog.monsterxx03.com/2018/12/29/%E4%BB%8E%E5%8E%BB%E5%B9%B4%E7%9A%84%E4%B8%80%E4%B8%AApatch%E8%AF%B4%E8%B5%B7/">example blog about nagle+delayed ack</a>)</li>
+</ol>
+<blockquote>
+<p>For example, we want to test the idea in putting maximum delay<br>ACK in TCP header option which is similar to a draft RFC proposal <a target="_blank" rel="noopener" href="https://datatracker.ietf.org/doc/html/draft-wang-tcpm-low-latency-opt-00">[1]</a></p>
+</blockquote>
+<ol start="2">
+<li>或者想要只对 internal traffic（bpf prog 中做一些自定义 IP 匹配的逻辑）  来 enable 一些 tcp option。</li>
+<li>比如可以根据特定 option identify 一个 tcp 连接？我瞎想的，有些风险。</li>
+</ol>
+<p>example: <a target="_blank" rel="noopener" href="https://elixir.bootlin.com/linux/v6.12.6/source/tools/testing/selftests/bpf/progs/test_misc_tcp_hdr_options.c#L301">https://elixir.bootlin.com/linux/v6.12.6/source/tools/testing/selftests/bpf/progs/test_misc_tcp_hdr_options.c#L301</a></p>
+<p>可以参考下 patch <a target="_blank" rel="noopener" href="https://lore.kernel.org/bpf/20200820190104.2885895-1-kafai@fb.com/">patch link</a> ，但我感觉使用起来有些麻烦，得 enable&#x2F;disable sock_ops 的一些 cb_flags，然后还得区别 syn 包和非 syn 包的情况。</p>
+<h3 id="关于-tcp-call-bpf"><a href="#关于-tcp-call-bpf" class="headerlink" title="关于 tcp_call_bpf"></a>关于 tcp_call_bpf</h3><p>以上 kernel 中关于 sockops 的埋点都会最终调用到 <code>tcp_call_bpf()</code>，它会把相关 information 包装成一个 <code>bpf_sock_ops_kern</code> 的结构体，进而调用 bpf。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Call BPF_SOCK_OPS program that returns an int. If the return value</span></span><br><span class="line"><span class="comment"> * is &lt; 0, then the BPF op failed (for example if the loaded BPF</span></span><br><span class="line"><span class="comment"> * program does not support the chosen operation or there is no BPF</span></span><br><span class="line"><span class="comment"> * program loaded).</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="meta">#<span class="keyword">ifdef</span> CONFIG_BPF</span></span><br><span class="line"><span class="type">static</span> <span class="keyword">inline</span> <span class="type">int</span> <span class="title function_">tcp_call_bpf</span><span class="params">(<span class="keyword">struct</span> sock *sk, <span class="type">int</span> op, u32 nargs, u32 *args)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_sock_ops_kern</span> <span class="title">sock_ops</span>;</span></span><br><span class="line">	<span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">	<span class="built_in">memset</span>(&amp;sock_ops, <span class="number">0</span>, offsetof(<span class="keyword">struct</span> bpf_sock_ops_kern, temp));</span><br><span class="line">	<span class="keyword">if</span> (sk_fullsock(sk)) &#123;</span><br><span class="line">		sock_ops.is_fullsock = <span class="number">1</span>;</span><br><span class="line">		sock_owned_by_me(sk);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	sock_ops.sk = sk;</span><br><span class="line">	sock_ops.op = op;</span><br><span class="line">	<span class="keyword">if</span> (nargs &gt; <span class="number">0</span>)</span><br><span class="line">		<span class="built_in">memcpy</span>(sock_ops.args, args, nargs * <span class="keyword">sizeof</span>(*args));</span><br><span class="line"></span><br><span class="line">	ret = BPF_CGROUP_RUN_PROG_SOCK_OPS(&amp;sock_ops);</span><br><span class="line">	<span class="keyword">if</span> (ret == <span class="number">0</span>)</span><br><span class="line">		ret = sock_ops.reply;</span><br><span class="line">	<span class="keyword">else</span></span><br><span class="line">		ret = <span class="number">-1</span>;</span><br><span class="line">	<span class="keyword">return</span> ret;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TIMEOUT-INIT"><span class="toc-number">1.</span> <span class="toc-text">BPF_SOCK_OPS_TIMEOUT_INIT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RWND-INIT"><span class="toc-number">2.</span> <span class="toc-text">BPF_SOCK_OPS_RWND_INIT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TCP-CONNECT-CB"><span class="toc-number">3.</span> <span class="toc-text">BPF_SOCK_OPS_TCP_CONNECT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-ACTIVE-ESTABLISHED-CB"><span class="toc-number">4.</span> <span class="toc-text">BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-PASSIVE-ESTABLISHED-CB"><span class="toc-number">5.</span> <span class="toc-text">BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-NEEDS-ECN"><span class="toc-number">6.</span> <span class="toc-text">BPF_SOCK_OPS_NEEDS_ECN</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-BASE-RTT"><span class="toc-number">7.</span> <span class="toc-text">BPF_SOCK_OPS_BASE_RTT</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RTO-CB"><span class="toc-number">8.</span> <span class="toc-text">BPF_SOCK_OPS_RTO_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RETRANS-CB"><span class="toc-number">9.</span> <span class="toc-text">BPF_SOCK_OPS_RETRANS_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-STATE-CB"><span class="toc-number">10.</span> <span class="toc-text">BPF_SOCK_OPS_STATE_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-TCP-LISTEN-CB"><span class="toc-number">11.</span> <span class="toc-text">BPF_SOCK_OPS_TCP_LISTEN_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-RTT-CB"><span class="toc-number">12.</span> <span class="toc-text">BPF_SOCK_OPS_RTT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-PARSE-HDR-OPT-CB"><span class="toc-number">13.</span> <span class="toc-text">BPF_SOCK_OPS_PARSE_HDR_OPT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-HDR-OPT-LEN-CB"><span class="toc-number">14.</span> <span class="toc-text">BPF_SOCK_OPS_HDR_OPT_LEN_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#BPF-SOCK-OPS-WRITE-HDR-OPT-CB"><span class="toc-number">15.</span> <span class="toc-text">BPF_SOCK_OPS_WRITE_HDR_OPT_CB</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E5%85%B3%E4%BA%8E-tcp-call-bpf"><span class="toc-number">16.</span> <span class="toc-text">关于 tcp_call_bpf</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&text=about sockops bpf"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&is_video=false&description=about sockops bpf"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=about sockops bpf&body=Check out this article: https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&title=about sockops bpf"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&name=about sockops bpf&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/01/01/2025-0101-sockops-bpf/&t=about sockops bpf"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

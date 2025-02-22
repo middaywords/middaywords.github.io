@@ -51,6 +51,16 @@
     
 	<!-- mathjax -->
 	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
 <meta name="generator" content="Hexo 6.3.0"></head>
 
 <body class="max-width mx-auto px3 ltr">
@@ -112,7 +122,7 @@
 
         <span>
     
-        <a class="" href="/2023/11/13/linux-tc-bpf/">linux tc (2) - tc-bpf</a>
+        <a class="" href="/2023/11/13/2023-1113-linux-tc-bpf/">linux tc (2) - tc-bpf</a>
     
 
 
@@ -136,31 +146,7 @@
 
         <span>
     
-        <a class="" href="/2023/10/26/bpf-verifier-3/">bpf verifier 3</a>
-    
-
-
-</span>
-      </li>
-    
-      
-      
-      
-      
-      <li class="post-item">
-        
-    <div class="meta">
-      
-        
-          <time datetime="2023-10-18T07:42:19.000Z" class="dt-published" itemprop="datePublished">2023-10-18</time>
-        
-      
-    </div>
-
-
-        <span>
-    
-        <a class="" href="/2023/10/18/cilium-maps/">cilium maps</a>
+        <a class="" href="/2023/10/26/2023-1026-bpf-verifier-3/">bpf verifier (3)</a>
     
 
 
@@ -184,7 +170,7 @@
 
         <span>
     
-        <a class="" href="/2023/10/08/virtio-interrupts/">virtio interrupts</a>
+        <a class="" href="/2023/10/08/2023-1008-virtio-interrupts/">virtio interrupts and interrupt stack</a>
     
 
 
@@ -208,7 +194,7 @@
 
         <span>
     
-        <a class="" href="/2023/10/03/bpf-verifier-2/">bpf verifier (2)</a>
+        <a class="" href="/2023/10/03/2023-1003-bpf-verifier-2/">bpf verifier (2)</a>
     
 
 
@@ -232,7 +218,7 @@
 
         <span>
     
-        <a class="" href="/2023/10/01/bpf-verifier-1/">bpf verifier (1)</a>
+        <a class="" href="/2023/10/01/2023-1001-bpf-verifier-1/">bpf verifier (1)</a>
     
 
 
@@ -256,7 +242,7 @@
 
         <span>
     
-        <a class="" href="/2023/09/26/bpf-struct-ops/">bpf struct_ops</a>
+        <a class="" href="/2023/09/26/2023-0926-bpf-struct-ops/">bpf struct_ops</a>
     
 
 
@@ -280,7 +266,7 @@
 
         <span>
     
-        <a class="" href="/2023/09/19/hack-syscall/">hack syscall</a>
+        <a class="" href="/2023/09/19/2023-0919-hack-syscall/">hack syscall</a>
     
 
 
@@ -304,55 +290,7 @@
 
         <span>
     
-        <a class="" href="/2023/09/17/perf-ring-buf/">perf ring buf</a>
-    
-
-
-</span>
-      </li>
-    
-      
-      
-      
-      
-      <li class="post-item">
-        
-    <div class="meta">
-      
-        
-          <time datetime="2023-09-05T08:30:22.000Z" class="dt-published" itemprop="datePublished">2023-09-05</time>
-        
-      
-    </div>
-
-
-        <span>
-    
-        <a class="" href="/2023/09/05/trace-skb-drop/">trace skb drop</a>
-    
-
-
-</span>
-      </li>
-    
-      
-      
-      
-      
-      <li class="post-item">
-        
-    <div class="meta">
-      
-        
-          <time datetime="2023-09-03T07:52:17.000Z" class="dt-published" itemprop="datePublished">2023-09-03</time>
-        
-      
-    </div>
-
-
-        <span>
-    
-        <a class="" href="/2023/09/03/impl-of-linux-socket/">impl of linux socket</a>
+        <a class="" href="/2023/09/17/2023-0917-perf-ring-buf/">bpf perf buf and bpf ring buf</a>
     
 
 
@@ -376,7 +314,7 @@
 
         <span>
     
-        <a class="" href="/2023/09/01/skb-details/">skb details</a>
+        <a class="" href="/2023/09/01/2023-0901-skb-details/">skb details</a>
     
 
 
@@ -400,31 +338,7 @@
 
         <span>
     
-        <a class="" href="/2023/08/24/trace-tcp-send-recv/">trace tcp connect/send/recv</a>
-    
-
-
-</span>
-      </li>
-    
-      
-      
-      
-      
-      <li class="post-item">
-        
-    <div class="meta">
-      
-        
-          <time datetime="2023-08-24T02:49:35.000Z" class="dt-published" itemprop="datePublished">2023-08-24</time>
-        
-      
-    </div>
-
-
-        <span>
-    
-        <a class="" href="/2023/08/24/bpf-sock-ops/">bpf struct ops</a>
+        <a class="" href="/2023/08/24/2023-0824-trace-tcp-send-recv/">use ftrace/stackcount to find tcp connect/send/recv stack</a>
     
 
 
@@ -448,7 +362,7 @@
 
         <span>
     
-        <a class="" href="/2023/08/17/iptables-legacy-save-and-restore/">iptables-legacy save and restore</a>
+        <a class="" href="/2023/08/17/2023-0817-iptables-legacy-save-and-restore/">iptables-legacy save and restore</a>
     
 
 
@@ -472,7 +386,7 @@
 
         <span>
     
-        <a class="" href="/2023/08/11/cilium-packet-life/">cilium packet life</a>
+        <a class="" href="/2023/08/11/2023-0811-cilium-packet-life/">cilium packet life</a>
     
 
 
@@ -496,7 +410,7 @@
 
         <span>
     
-        <a class="" href="/2023/08/07/xdpdump/">xdpdump</a>
+        <a class="" href="/2023/08/07/2023-0807-xdpdump/">xdpdump</a>
     
 
 
@@ -520,7 +434,7 @@
 
         <span>
     
-        <a class="" href="/2023/07/23/libbpf-source-code-analysis/">libbpf 源码解析 (1)</a>
+        <a class="" href="/2023/07/23/2023-0723-libbpf-source-code-analysis/">libbpf 源码解析 (1)</a>
     
 
 
@@ -544,7 +458,7 @@
 
         <span>
     
-        <a class="" href="/2023/07/22/About-the-refreshed-blog/">博客翻新小记</a>
+        <a class="" href="/2023/07/22/2023-0722-About-the-refreshed-blog/">博客翻新小记</a>
     
 
 
@@ -568,7 +482,7 @@
 
         <span>
     
-        <a class="" href="/2023/07/22/hello-world/">Hello World</a>
+        <a class="" href="/2023/07/22/2023-0722-hello-world/">Hello World</a>
     
 
 
@@ -586,7 +500,7 @@
     Copyright &copy;
     
     
-    2016-2024
+    2016-2025
     Kangjie Xu
   </div>
   <div class="footer-right">

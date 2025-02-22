@@ -8,7 +8,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="[SIGCOMM23] Fathom: Understanding Datacenter Application Network Performance Translated by KIMI，读不通的地方就是 KIMI 的锅，不过我觉得它概括做的挺好的  Abstract: 给 RPC 请求找 network performance bottleneck。它把 network latency 划分">
 <meta property="og:type" content="article">
-<meta property="og:title" content="paper-notes fathom[sigcomm23]">
+<meta property="og:title" content="paper-notes - fathom[sigcomm23]">
 <meta property="og:url" content="https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
 <meta property="og:description" content="[SIGCOMM23] Fathom: Understanding Datacenter Application Network Performance Translated by KIMI，读不通的地方就是 KIMI 的锅，不过我觉得它概括做的挺好的  Abstract: 给 RPC 请求找 network performance bottleneck。它把 network latency 划分">
@@ -20,7 +20,7 @@
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20240501142359562.png">
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20240501143420611.png">
 <meta property="article:published_time" content="2024-04-07T08:40:35.000Z">
-<meta property="article:modified_time" content="2024-09-15T14:36:43.693Z">
+<meta property="article:modified_time" content="2025-01-05T16:46:08.882Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="network">
 <meta property="article:tag" content="paper">
@@ -45,7 +45,7 @@
       
     
     <!-- title -->
-    <title>paper-notes fathom[sigcomm23]</title>
+    <title>paper-notes - fathom[sigcomm23]</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -63,6 +63,16 @@
     
     
 	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
 	
 <meta name="generator" content="Hexo 6.3.0"></head>
 
@@ -93,7 +103,7 @@
         <li><a class="icon" aria-label="Previous post" href="/2024/04/13/2024-0413-tsq/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
         
         
-        <li><a class="icon" aria-label="Next post" href="/2024/03/20/k8s-cni-bandwidth-plugin/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Next post" href="/2024/03/20/2024-0320-k8s-cni-bandwidth-plugin/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
         
         <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
         <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
@@ -107,16 +117,16 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&text=paper-notes fathom[sigcomm23]"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&is_video=false&description=paper-notes fathom[sigcomm23]"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes fathom[sigcomm23]&body=Check out this article: https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&name=paper-notes fathom[sigcomm23]&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&t=paper-notes fathom[sigcomm23]"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&text=paper-notes - fathom[sigcomm23]"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&is_video=false&description=paper-notes - fathom[sigcomm23]"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes - fathom[sigcomm23]&body=Check out this article: https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&name=paper-notes - fathom[sigcomm23]&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&t=paper-notes - fathom[sigcomm23]"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -136,7 +146,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        paper-notes fathom[sigcomm23]
+        paper-notes - fathom[sigcomm23]
     </h1>
 
 
@@ -300,16 +310,16 @@
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&text=paper-notes fathom[sigcomm23]"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&is_video=false&description=paper-notes fathom[sigcomm23]"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=paper-notes fathom[sigcomm23]&body=Check out this article: https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes fathom[sigcomm23]"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&name=paper-notes fathom[sigcomm23]&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&t=paper-notes fathom[sigcomm23]"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&text=paper-notes - fathom[sigcomm23]"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&is_video=false&description=paper-notes - fathom[sigcomm23]"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper-notes - fathom[sigcomm23]&body=Check out this article: https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&title=paper-notes - fathom[sigcomm23]"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&name=paper-notes - fathom[sigcomm23]&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/04/07/2024-0407-fathom-notes/&t=paper-notes - fathom[sigcomm23]"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -332,7 +342,7 @@
     Copyright &copy;
     
     
-    2016-2024
+    2016-2025
     Kangjie Xu
   </div>
   <div class="footer-right">

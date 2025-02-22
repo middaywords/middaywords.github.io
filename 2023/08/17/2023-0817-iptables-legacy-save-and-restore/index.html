@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="[TOC] iptables legacy save 和 restore 分析写这篇东西的背景比较啰嗦。 公司的 gateway 节点用的 iptables-legacy 实现一些 Access control 之类的网络策略。iptables 数量很多，遍历会导致 si 比较高，CPU 较高，容易出问题，需要一些监控服务，监控 iptables 的变化来辅助诊断问题。 iptables 控制面相">
+<meta property="og:type" content="article">
+<meta property="og:title" content="iptables-legacy save and restore">
+<meta property="og:url" content="https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="[TOC] iptables legacy save 和 restore 分析写这篇东西的背景比较啰嗦。 公司的 gateway 节点用的 iptables-legacy 实现一些 Access control 之类的网络策略。iptables 数量很多，遍历会导致 si 比较高，CPU 较高，容易出问题，需要一些监控服务，监控 iptables 的变化来辅助诊断问题。 iptables 控制面相">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-08-17T14:33:44.000Z">
+<meta property="article:modified_time" content="2024-09-15T14:36:43.696Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="iptables">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>iptables-legacy save and restore</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/08/24/2023-0824-trace-tcp-send-recv/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/08/11/2023-0811-cilium-packet-life/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&text=iptables-legacy save and restore"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&is_video=false&description=iptables-legacy save and restore"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=iptables-legacy save and restore&body=Check out this article: https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&name=iptables-legacy save and restore&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&t=iptables-legacy save and restore"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#iptables-legacy-save-%E5%92%8C-restore-%E5%88%86%E6%9E%90"><span class="toc-number">1.</span> <span class="toc-text">iptables legacy save 和 restore 分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables-save"><span class="toc-number">1.1.</span> <span class="toc-text">iptables-save</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables-restore"><span class="toc-number">1.2.</span> <span class="toc-text">iptables-restore</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#save-%E5%92%8C-restore-%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%94%81%E5%88%86%E6%9E%90"><span class="toc-number">1.3.</span> <span class="toc-text">save 和 restore 过程中的锁分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">2.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        iptables-legacy save and restore
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-08-17T14:33:44.000Z" class="dt-published" itemprop="datePublished">2023-08-17</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/iptables/" rel="tag">iptables</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>[TOC]</p>
+<h2 id="iptables-legacy-save-和-restore-分析"><a href="#iptables-legacy-save-和-restore-分析" class="headerlink" title="iptables legacy save 和 restore 分析"></a>iptables legacy save 和 restore 分析</h2><p>写这篇东西的背景比较啰嗦。</p>
+<p>公司的 gateway 节点用的 iptables-legacy 实现一些 Access control 之类的网络策略。iptables 数量很多，遍历会导致 si 比较高，CPU 较高，容易出问题，需要一些监控服务，监控 iptables 的变化来辅助诊断问题。</p>
+<p>iptables 控制面相关的监控服务是我在公司做的第二个比较完整的工作。实现过程中，需要了解一些 iptables-save 和 iptables-restore 的相关实现，因此记录一下。</p>
+<h3 id="iptables-save"><a href="#iptables-save" class="headerlink" title="iptables-save"></a>iptables-save</h3><p>iptables-save 会遍历所有的 table, 将每个 table 的所有 rule 打印出来。相关的 iptables rule 存储在内核的 iptables 模块中。用户态是通过 getsockopt 的系统调用来获取相关信息的。简要概括的话，包括两个步骤</p>
+<ol>
+<li>GET_INFO：获取 iptables 模块中某个 table 的 metadata</li>
+<li>GET_ENTRIES: 获取 iptables 模块中某个 table 的每一个条 entry</li>
+</ol>
+<blockquote>
+<p>关于 entry 和 rule 的关系： 我理解是 entry 里面包括 xt_target， xt_match，match表示匹配条件，target 表示匹配后的具体操作，比如 DROP，ACCEPT之类的。 [1]</p>
+</blockquote>
+<h3 id="iptables-restore"><a href="#iptables-restore" class="headerlink" title="iptables-restore"></a>iptables-restore</h3><p>iptables-restore 会先将通过和 iptables-save 一样的方式，调用 getsockopt 来获取内核模块中的 iptables rules。然后在用户态进行改动，生成新的表，包含所有的 iptables 规则，之后再通过 setsockopt 系统调用，将表复制到内核中，将指定 table 进行替换</p>
+<ol>
+<li>GET_INFO：获取 iptables 模块中某个 table 的 metadata</li>
+<li>GET_ENTRIES: 获取 iptables 模块中某个 table 的每一个条 entry</li>
+<li>SET_REPLACE: 将用户态修改后的表复制到内核态中，将表的指针通过原子操作修改，指向新的表。将 iptables counter 置为 0，并将现在的 counter 复制到 用户态。（Question： 为什么这里需要多一次 对 counter 的记录呢？对 counter 的修改为什么要拆成两次呢？个人猜想： 不能保持是因为规则发生了变化，之前的counter 对应的规则不一定存在了或者修改了。）</li>
+<li>SET_ADD_COUNTERS: 在用户态计算了 counter 数值后，通过系统调用 setsockopt，使内核模块里的统计值原子加上 用户态提供的 counter 数值。</li>
+</ol>
+<p>替换过程中的 counter 变化。（iptables -n 即可显示匹配的 pkts bytes，这个数据由 iptables counter 统计）</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">counters_normal_map</span><span class="params">(STRUCT_COUNTERS_INFO *newcounters,</span></span><br><span class="line"><span class="params">				STRUCT_REPLACE *repl, <span class="type">unsigned</span> <span class="type">int</span> idx,</span></span><br><span class="line"><span class="params">				<span class="type">unsigned</span> <span class="type">int</span> mappos)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="comment">/* Original read: X.</span></span><br><span class="line"><span class="comment">	 * Atomic read on replacement: X + Y.</span></span><br><span class="line"><span class="comment">	 * Currently in kernel: Z.</span></span><br><span class="line"><span class="comment">	 * Want in kernel: X + Y + Z.</span></span><br><span class="line"><span class="comment">	 * =&gt; Add in X + Y</span></span><br><span class="line"><span class="comment">	 * =&gt; Add in replacement read.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	newcounters-&gt;counters[idx] = repl-&gt;counters[mappos];</span><br><span class="line">	DEBUGP_C(<span class="string">&quot;NORMAL_MAP =&gt; mappos %u \n&quot;</span>, mappos);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h3 id="save-和-restore-过程中的锁分析"><a href="#save-和-restore-过程中的锁分析" class="headerlink" title="save 和 restore 过程中的锁分析"></a>save 和 restore 过程中的锁分析</h3><p>save 和 restore 调用 setsockopt 或者 getsockopt 进入 iptables 内核模块时，会进入 xt_table 模块中，其中每个 xt_table 在被操作时，都会加锁，这个锁是表级别的。</p>
+<p>使用 save 和 restore 过程中，除了内核态，在用户态也会竞争用户态的一把锁，默认配置在 &#x2F;run&#x2F;xtables.lock。这把锁大概是对所有 iptables 相关操作的。</p>
+<p>restore 的过程中，对数据面有影响，可以看到在如下代码中，会调用 bottom half disable，将下半部中断禁用，会导致网络协议栈暂停。此外，中间还包括一个原子替换和多核同步（IPI 中断）。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">struct</span> xt_table_info *</span><br><span class="line"><span class="title function_">xt_replace_table</span><span class="params">(<span class="keyword">struct</span> xt_table *table,</span></span><br><span class="line"><span class="params">	      <span class="type">unsigned</span> <span class="type">int</span> num_counters,</span></span><br><span class="line"><span class="params">	      <span class="keyword">struct</span> xt_table_info *newinfo,</span></span><br><span class="line"><span class="params">	      <span class="type">int</span> *error)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">xt_table_info</span> *<span class="title">private</span>;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">int</span> cpu;</span><br><span class="line">	<span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">	ret = xt_jumpstack_alloc(newinfo);</span><br><span class="line">	...</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Do the substitution. */</span></span><br><span class="line">	local_bh_disable();</span><br><span class="line">	private = table-&gt;private;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* Check inside lock: is the old number correct? */</span></span><br><span class="line">	...</span><br><span class="line"></span><br><span class="line">	newinfo-&gt;initial_entries = private-&gt;initial_entries;</span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Ensure contents of newinfo are visible before assigning to</span></span><br><span class="line"><span class="comment">	 * private.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	smp_wmb();</span><br><span class="line">	table-&gt;private = newinfo;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* make sure all cpus see new -&gt;private value */</span></span><br><span class="line">	smp_mb();</span><br><span class="line"></span><br><span class="line">	<span class="comment">/*</span></span><br><span class="line"><span class="comment">	 * Even though table entries have now been swapped, other CPU&#x27;s</span></span><br><span class="line"><span class="comment">	 * may still be using the old entries...</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	local_bh_enable();</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* ... so wait for even xt_recseq on all cpus */</span></span><br><span class="line">	...</span><br><span class="line">&#125;</span><br><span class="line">EXPORT_SYMBOL_GPL(xt_replace_table);</span><br></pre></td></tr></table></figure>
+
+
+
+
+
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><p>[1] <a target="_blank" rel="noopener" href="https://switch-router.gitee.io/blog/netfilter4/">https://switch-router.gitee.io/blog/netfilter4/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#iptables-legacy-save-%E5%92%8C-restore-%E5%88%86%E6%9E%90"><span class="toc-number">1.</span> <span class="toc-text">iptables legacy save 和 restore 分析</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables-save"><span class="toc-number">1.1.</span> <span class="toc-text">iptables-save</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#iptables-restore"><span class="toc-number">1.2.</span> <span class="toc-text">iptables-restore</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#save-%E5%92%8C-restore-%E8%BF%87%E7%A8%8B%E4%B8%AD%E7%9A%84%E9%94%81%E5%88%86%E6%9E%90"><span class="toc-number">1.3.</span> <span class="toc-text">save 和 restore 过程中的锁分析</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">2.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&text=iptables-legacy save and restore"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&is_video=false&description=iptables-legacy save and restore"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=iptables-legacy save and restore&body=Check out this article: https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&title=iptables-legacy save and restore"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&name=iptables-legacy save and restore&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/08/17/2023-0817-iptables-legacy-save-and-restore/&t=iptables-legacy save and restore"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="perf ring bufBPF 程序需要将数据发到用户空间，一般很多都用 BPF perf buffer，但它有些问题，比如 浪费内存（因为 per-CPU），无法保证事件顺序等。 因此，内核 5.8 引入了 BPF ring buffer，它有如下优势：  比 perf buffer 内存效率更高，保证事件顺序，性能也不输 perf buffer。 提供了与 perf buffer 类似的 A">
+<meta property="og:type" content="article">
+<meta property="og:title" content="bpf perf buf and bpf ring buf">
+<meta property="og:url" content="https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="perf ring bufBPF 程序需要将数据发到用户空间，一般很多都用 BPF perf buffer，但它有些问题，比如 浪费内存（因为 per-CPU），无法保证事件顺序等。 因此，内核 5.8 引入了 BPF ring buffer，它有如下优势：  比 perf buffer 内存效率更高，保证事件顺序，性能也不输 perf buffer。 提供了与 perf buffer 类似的 A">
+<meta property="og:locale" content="en_US">
+<meta property="article:published_time" content="2023-09-17T02:10:13.000Z">
+<meta property="article:modified_time" content="2025-01-05T16:42:03.713Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="bpf">
+<meta property="article:tag" content="kernel">
+<meta name="twitter:card" content="summary">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>bpf perf buf and bpf ring buf</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2023/09/19/2023-0919-hack-syscall/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2023/09/01/2023-0901-skb-details/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&text=bpf perf buf and bpf ring buf"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&is_video=false&description=bpf perf buf and bpf ring buf"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=bpf perf buf and bpf ring buf&body=Check out this article: https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&name=bpf perf buf and bpf ring buf&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&t=bpf perf buf and bpf ring buf"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#perf-ring-buf"><span class="toc-number">1.</span> <span class="toc-text">perf ring buf</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ring-buf-%E7%9A%84%E6%94%B9%E8%BF%9B"><span class="toc-number">1.1.</span> <span class="toc-text">ring buf 的改进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0%E8%A7%A3%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">源码实现解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#More-details-on-implementation"><span class="toc-number">1.3.</span> <span class="toc-text">More details on implementation</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95-cases"><span class="toc-number">1.4.</span> <span class="toc-text">测试 cases</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%BA%9B%E8%AE%BE%E8%AE%A1%E4%B8%8A%E7%9A%84%E8%80%83%E8%99%91-%E7%9C%8B%E4%B8%8D%E6%87%82"><span class="toc-number">1.5.</span> <span class="toc-text">一些设计上的考虑 [看不懂]</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%BA%9B%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-number">1.6.</span> <span class="toc-text">一些实现细节</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Reference"><span class="toc-number">1.7.</span> <span class="toc-text">Reference</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        bpf perf buf and bpf ring buf
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2023-09-17T02:10:13.000Z" class="dt-published" itemprop="datePublished">2023-09-17</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/kernel/" rel="tag">kernel</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <h2 id="perf-ring-buf"><a href="#perf-ring-buf" class="headerlink" title="perf ring buf"></a>perf ring buf</h2><p>BPF 程序需要将数据发到用户空间，一般很多都用 BPF perf buffer，但它有些问题，比如 浪费内存（因为 per-CPU），无法保证事件顺序等。</p>
+<p>因此，内核 5.8 引入了 BPF ring buffer，它有如下优势：</p>
+<ol>
+<li>比 perf buffer 内存效率更高，保证事件顺序，性能也不输 perf buffer。</li>
+<li>提供了与 perf buffer 类似的 API，方便用户迁移，也提供了新的 reserve  和 commit 的 API，以实现更好的性能。</li>
+</ol>
+<p>实验和真实环境的结果都说明，从 BPF 程序发送数据给用户空间应该首选 BPF ring buffer。</p>
+<h3 id="ring-buf-的改进"><a href="#ring-buf-的改进" class="headerlink" title="ring buf 的改进"></a>ring buf 的改进</h3><p>perfbuf 是 per-CPU circular buffers，实现高效的内核和用户空间的交互，但 per-CPU 的设计导致 <strong>内存使用效率低下</strong> 和 <strong>事件顺序无法保证</strong> 两个问题。</p>
+<p>因此引入 ringbuf 来解决问题，ringbuf 是<strong>“多 producer 、单 consumer ”</strong> MPSC 队列，可在多个CPU 之间共享和操作，perfbuf 支持的它都支持，包括</p>
+<ol>
+<li>可变长数据</li>
+<li>Mmapped region 来高效地从 userspace 读数据，避免内存拷贝和 系统调用。</li>
+<li>支持 Epoll notification 和 busy-loop 两种数据获取方式</li>
+</ol>
+<p>它还解决了 perfbuf 的下列问题：</p>
+<ol>
+<li>内存开销（memory overhead）；</li>
+<li>数据乱序；</li>
+<li>无效的处理逻辑和不必要的数据复制（extra data copying）。</li>
+</ol>
+<p>具体改进方法</p>
+<ol>
+<li>使用 shared ring buf for each CPU<ol>
+<li>缓解 内存效率（buffer使用率） v.s. 数据丢失（buffer 满了导致丢失数据） 的 tradeoff，在不同 CPU 处理不均衡的时候，更明显。</li>
+<li>扩展性好：CPU数量增加，per-CPU buffer 的总量会翻倍，但是 ringbuf 可能不需要增大就够用了。</li>
+<li>保证事件顺序。</li>
+</ol>
+</li>
+<li>提供 reserve 和 submit API 来预留数据<ol>
+<li>之前使用 perfbuf ，BPF 程序现需要初始化事件数据，然后送到用户空间，意味着数据需要拷贝两次<ol>
+<li>第一次复制到局部变量</li>
+<li>第二次复制到 perfbuf 中</li>
+<li>如果 perfbuf 里面没有足够空间了，那么第一步的数据是浪费的</li>
+</ol>
+</li>
+<li>BPF ringbuf 提供了可选地 reserve submit方式<ol>
+<li>首先申请为数据预留空间 reserve()</li>
+<li>预留成功后，应用直接将准备发送的数据放到 ringbuf 中，节省了 perfbuf 中的一次复制</li>
+<li>将数据提交到用户空间十分高效，不会失败，不涉及额外的内存复制</li>
+<li>如果buffer 空间不够而预留失败，则BPF 程序马上知道，不会再执行 perfbuf 中的第一次复制。</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+<h3 id="源码实现解析"><a href="#源码实现解析" class="headerlink" title="源码实现解析"></a>源码实现解析</h3><ul>
+<li>测试框架代码 tools&#x2F;testing&#x2F;selftests&#x2F;bpf&#x2F;bench.c</li>
+<li>ringbuf 测试代码 <ul>
+<li>tools&#x2F;testing&#x2F;selftests&#x2F;bpf&#x2F;benchs&#x2F;bench_ringbufs.c</li>
+</ul>
+</li>
+<li>ringbuf bpf 代码<ul>
+<li>tools&#x2F;testing&#x2F;selftests&#x2F;bpf&#x2F;progs&#x2F;ringbuf_bench.c</li>
+</ul>
+</li>
+<li>perfbuf bpf 代码<ul>
+<li>tools&#x2F;testing&#x2F;selftests&#x2F;bpf&#x2F;progs&#x2F;perfbuf_bench.c</li>
+</ul>
+</li>
+</ul>
+<p>提供了 commit&#x2F;reserve&#x2F;output&#x2F;discard API ，我觉得想法就是，通过拆分 reserve 和 commit&#x2F;discard 两步，尽可能减小竞争区。</p>
+<p>reserve 实现</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/bpf/ringbuf.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> *__bpf_ringbuf_reserve(<span class="keyword">struct</span> bpf_ringbuf *rb, u64 size)</span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> cons_pos, prod_pos, new_prod_pos, flags;</span><br><span class="line">	u32 len, pg_off;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_ringbuf_hdr</span> *<span class="title">hdr</span>;</span></span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (unlikely(size &gt; RINGBUF_MAX_RECORD_SZ))</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">	len = round_up(size + BPF_RINGBUF_HDR_SZ, <span class="number">8</span>);</span><br><span class="line">	<span class="keyword">if</span> (len &gt; rb-&gt;mask + <span class="number">1</span>)</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line"></span><br><span class="line">	cons_pos = smp_load_acquire(&amp;rb-&gt;consumer_pos);</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (in_nmi()) &#123;</span><br><span class="line">		<span class="keyword">if</span> (!spin_trylock_irqsave(&amp;rb-&gt;spinlock, flags))</span><br><span class="line">			<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		spin_lock_irqsave(&amp;rb-&gt;spinlock, flags);</span><br><span class="line">	&#125;</span><br><span class="line"></span><br><span class="line">	prod_pos = rb-&gt;producer_pos;</span><br><span class="line">	new_prod_pos = prod_pos + len;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* check for out of ringbuf space by ensuring producer position</span></span><br><span class="line"><span class="comment">	 * doesn&#x27;t advance more than (ringbuf_size - 1) ahead</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="keyword">if</span> (new_prod_pos - cons_pos &gt; rb-&gt;mask) &#123;</span><br><span class="line">		spin_unlock_irqrestore(&amp;rb-&gt;spinlock, flags);</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">NULL</span>;</span><br><span class="line">	&#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// prod_pos 是单调递增的值，只有在使用的时候对 buf size 求模</span></span><br><span class="line">	hdr = (<span class="type">void</span> *)rb-&gt;data + (prod_pos &amp; rb-&gt;mask);</span><br><span class="line">    <span class="comment">// 记录 bpf record 相对于 bpf_ringbuf 结构体的偏差，之后方便用 record 找到 ringbuf</span></span><br><span class="line">	pg_off = bpf_ringbuf_rec_pg_off(rb, hdr);</span><br><span class="line">    <span class="comment">// set BPF_RINGBUF_BUSY_BIT in len field，表示这个 buffer 被占用了</span></span><br><span class="line">	hdr-&gt;len = size | BPF_RINGBUF_BUSY_BIT;</span><br><span class="line">	hdr-&gt;pg_off = pg_off;</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* pairs with consumer&#x27;s smp_load_acquire() */</span></span><br><span class="line">	smp_store_release(&amp;rb-&gt;producer_pos, new_prod_pos);</span><br><span class="line"></span><br><span class="line">	spin_unlock_irqrestore(&amp;rb-&gt;spinlock, flags);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 返回数据区域</span></span><br><span class="line">	<span class="keyword">return</span> (<span class="type">void</span> *)hdr + BPF_RINGBUF_HDR_SZ;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>commit 的实现</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/bpf/ringbuf.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">bpf_ringbuf_commit</span><span class="params">(<span class="type">void</span> *sample, u64 flags, <span class="type">bool</span> discard)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> rec_pos, cons_pos;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_ringbuf_hdr</span> *<span class="title">hdr</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_ringbuf</span> *<span class="title">rb</span>;</span></span><br><span class="line">	u32 new_len;</span><br><span class="line"></span><br><span class="line">	hdr = sample - BPF_RINGBUF_HDR_SZ;</span><br><span class="line">	rb = bpf_ringbuf_restore_from_rec(hdr);</span><br><span class="line">	<span class="comment">// BPF_RINGBUF_BUSY_BIT 是用来同步的，需要配合，其中 len 共 32 位</span></span><br><span class="line">    <span class="comment">// 其中 31 位用来表示 BUSY BIT，BUSY BIT set 说明，producer 还未将</span></span><br><span class="line">    <span class="comment">// 数据准备好，还没有提交。</span></span><br><span class="line">	new_len = hdr-&gt;len ^ BPF_RINGBUF_BUSY_BIT;</span><br><span class="line">    <span class="comment">// len 的第 30 位 BPF_RINGBUF_DISCARD_BIT 表示是否 producer 希望用户丢弃</span></span><br><span class="line">    <span class="comment">// 数据，这常用于 all or nothing，类似 packet 里一个 BIT 错了，整个包就没用了</span></span><br><span class="line">	<span class="keyword">if</span> (discard)</span><br><span class="line">		new_len |= BPF_RINGBUF_DISCARD_BIT;</span><br><span class="line">    <span class="comment">// 基于以上，bpf ringbuf 最大为 2^30 - 1, about 256 MB</span></span><br><span class="line"></span><br><span class="line">	<span class="comment">/* update record header with correct final size prefix */</span></span><br><span class="line">	xchg(&amp;hdr-&gt;len, new_len);</span><br><span class="line"></span><br><span class="line">	<span class="comment">/* if consumer caught up and is waiting for our record, notify about</span></span><br><span class="line"><span class="comment">	 * new data availability</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	rec_pos = (<span class="type">void</span> *)hdr - (<span class="type">void</span> *)rb-&gt;data;</span><br><span class="line">    <span class="comment">// 这里的 consumer pos 和 producer pos 都是单调递增的，只有用的时候才会执行</span></span><br><span class="line">    <span class="comment">// &amp; rb-&gt;mask 操作，表示求模取余</span></span><br><span class="line">	cons_pos = smp_load_acquire(&amp;rb-&gt;consumer_pos) &amp; rb-&gt;mask;</span><br><span class="line"></span><br><span class="line">	<span class="comment">// flags 用于表示是否需要唤醒用户消费者进程</span></span><br><span class="line">    <span class="keyword">if</span> (flags &amp; BPF_RB_FORCE_WAKEUP)</span><br><span class="line">		irq_work_queue(&amp;rb-&gt;work);</span><br><span class="line">    <span class="comment">// 如果 consumer 在等新的数据，就唤醒它。</span></span><br><span class="line">	<span class="keyword">else</span> <span class="keyword">if</span> (cons_pos == rec_pos &amp;&amp; !(flags &amp; BPF_RB_NO_WAKEUP))</span><br><span class="line">		irq_work_queue(&amp;rb-&gt;work);</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>bpf 程序逻辑</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tools/testing/selftests/bpf/progs/ringbuf_bench.c</span></span><br><span class="line"><span class="comment">// SPDX-License-Identifier: GPL-2.0</span></span><br><span class="line"><span class="comment">// Copyright (c) 2020 Facebook</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/bpf.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;bpf/bpf_helpers.h&gt;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> _license[] SEC(<span class="string">&quot;license&quot;</span>) = <span class="string">&quot;GPL&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">	__uint(type, BPF_MAP_TYPE_RINGBUF);</span><br><span class="line">&#125; ringbuf <span class="title function_">SEC</span><span class="params">(<span class="string">&quot;.maps&quot;</span>)</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// batch_cnt 表示测试中一次提交多少个 recrod</span></span><br><span class="line"><span class="type">const</span> <span class="keyword">volatile</span> <span class="type">int</span> batch_cnt = <span class="number">0</span>;</span><br><span class="line"><span class="comment">// use_output 表示使用 reserve/commit 还是 reserve API</span></span><br><span class="line"><span class="type">const</span> <span class="keyword">volatile</span> <span class="type">long</span> use_output = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 填充数据的内容</span></span><br><span class="line"><span class="type">long</span> sample_val = <span class="number">42</span>;</span><br><span class="line"><span class="comment">// 填充数据失败的次数</span></span><br><span class="line"><span class="type">long</span> dropped __attribute__((aligned(<span class="number">128</span>))) = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="comment">// 表示累积一定量数据则唤醒用户进程</span></span><br><span class="line"><span class="type">const</span> <span class="keyword">volatile</span> <span class="type">long</span> wakeup_data_size = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> __always_inline <span class="type">long</span> <span class="title function_">get_flags</span><span class="params">()</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">long</span> sz;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!wakeup_data_size)</span><br><span class="line">		<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">	sz = bpf_ringbuf_query(&amp;ringbuf, BPF_RB_AVAIL_DATA);</span><br><span class="line">	<span class="keyword">return</span> sz &gt;= wakeup_data_size ? BPF_RB_FORCE_WAKEUP : BPF_RB_NO_WAKEUP;</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line">SEC(<span class="string">&quot;fentry/__x64_sys_getpgid&quot;</span>)</span><br><span class="line"><span class="type">int</span> <span class="title function_">bench_ringbuf</span><span class="params">(<span class="type">void</span> *ctx)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">long</span> *sample, flags;</span><br><span class="line">	<span class="type">int</span> i;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">if</span> (!use_output) &#123;</span><br><span class="line">		<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; batch_cnt; i++) &#123;</span><br><span class="line">			<span class="comment">// reserve sizeof(sample_val) in ringbuf</span></span><br><span class="line">			sample = bpf_ringbuf_reserve(&amp;ringbuf,</span><br><span class="line">					             <span class="keyword">sizeof</span>(sample_val), <span class="number">0</span>);</span><br><span class="line">			<span class="keyword">if</span> (!sample) &#123;</span><br><span class="line">				<span class="comment">// ring buf is full, failed to add data</span></span><br><span class="line">				<span class="comment">// increment dropped count</span></span><br><span class="line">				__sync_add_and_fetch(&amp;dropped, <span class="number">1</span>);</span><br><span class="line">			&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">				<span class="comment">// commit the sample_val to ringbuf</span></span><br><span class="line">				*sample = sample_val;</span><br><span class="line">				flags = get_flags();</span><br><span class="line">				bpf_ringbuf_submit(sample, flags);</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">	&#125; <span class="keyword">else</span> &#123;</span><br><span class="line">		<span class="comment">// dont use reserve/commit API</span></span><br><span class="line">        <span class="comment">// output API 里面就是 reserve/commit API</span></span><br><span class="line">        <span class="comment">// 上面用 reserve/commit -&gt; reserve 返回地址，用户直接往里面填数据</span></span><br><span class="line">        <span class="comment">// 下面用 output -&gt; reserve 地址后，将用户的数据拷贝到 ringbuf 里面</span></span><br><span class="line">        <span class="comment">// 可能好处就是用户可以直接往 reserve 返回地址里面填东西</span></span><br><span class="line">		<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; batch_cnt; i++) &#123;</span><br><span class="line">			flags = get_flags();</span><br><span class="line">			<span class="keyword">if</span> (bpf_ringbuf_output(&amp;ringbuf, &amp;sample_val,</span><br><span class="line">					       <span class="keyword">sizeof</span>(sample_val), flags))</span><br><span class="line">				__sync_add_and_fetch(&amp;dropped, <span class="number">1</span>);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>用户态 bpf ringbuf  的处理</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tools/lib/bpf/ringbuf.c</span></span><br><span class="line"><span class="type">static</span> <span class="type">int64_t</span> <span class="title function_">ringbuf_process_ring</span><span class="params">(<span class="keyword">struct</span> ring* r)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> *len_ptr, len, err;</span><br><span class="line">	<span class="comment">/* 64-bit to avoid overflow in case of extreme application behavior */</span></span><br><span class="line">	<span class="type">int64_t</span> cnt = <span class="number">0</span>;</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> cons_pos, prod_pos;</span><br><span class="line">	<span class="type">bool</span> got_new_data;</span><br><span class="line">	<span class="type">void</span> *sample;</span><br><span class="line"></span><br><span class="line">	cons_pos = smp_load_acquire(r-&gt;consumer_pos);</span><br><span class="line">	<span class="keyword">do</span> &#123;</span><br><span class="line">		got_new_data = <span class="literal">false</span>;</span><br><span class="line">		prod_pos = smp_load_acquire(r-&gt;producer_pos);</span><br><span class="line">		<span class="keyword">while</span> (cons_pos &lt; prod_pos) &#123;</span><br><span class="line">			len_ptr = r-&gt;data + (cons_pos &amp; r-&gt;mask);</span><br><span class="line">			len = smp_load_acquire(len_ptr);</span><br><span class="line"></span><br><span class="line">			<span class="comment">/* sample not committed yet, bail out for now */</span></span><br><span class="line">            <span class="comment">// 这里处理逻辑是顺序处理，数据没准备好就会一直阻塞</span></span><br><span class="line">			<span class="keyword">if</span> (len &amp; BPF_RINGBUF_BUSY_BIT)</span><br><span class="line">				<span class="keyword">goto</span> done;</span><br><span class="line"></span><br><span class="line">			got_new_data = <span class="literal">true</span>;</span><br><span class="line">			cons_pos += roundup_len(len);</span><br><span class="line">            <span class="comment">// 如果设置了 DISCARD_BIT 就不处理了</span></span><br><span class="line">			<span class="keyword">if</span> ((len &amp; BPF_RINGBUF_DISCARD_BIT) == <span class="number">0</span>) &#123;</span><br><span class="line">				sample = (<span class="type">void</span> *)len_ptr + BPF_RINGBUF_HDR_SZ;</span><br><span class="line">                <span class="comment">// 调用用户定义的处理函数，可以看到这里是直接基于 sample 地址修改，没有拷贝</span></span><br><span class="line">                <span class="comment">// 然后这里是 record 逐个处理，如果处理时间太长，阻塞太久，可能导致提交的数据</span></span><br><span class="line">                <span class="comment">// 把 ringbuf 都占满了</span></span><br><span class="line">				err = r-&gt;sample_cb(r-&gt;ctx, sample, len);</span><br><span class="line">				<span class="keyword">if</span> (err &lt; <span class="number">0</span>) &#123;</span><br><span class="line">					<span class="comment">/* update consumer pos and bail out */</span></span><br><span class="line">					smp_store_release(r-&gt;consumer_pos,</span><br><span class="line">							  cons_pos);</span><br><span class="line">					<span class="keyword">return</span> err;</span><br><span class="line">				&#125;</span><br><span class="line">				cnt++;</span><br><span class="line">			&#125;</span><br><span class="line"></span><br><span class="line">			smp_store_release(r-&gt;consumer_pos, cons_pos);</span><br><span class="line">		&#125;</span><br><span class="line">	&#125; <span class="keyword">while</span> (got_new_data);</span><br><span class="line">done:</span><br><span class="line">	<span class="keyword">return</span> cnt;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>相对于 perf buf 的实现</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// tools/testing/selftests/bpf/progs/perfbuf_bench.c</span></span><br><span class="line"><span class="comment">// SPDX-License-Identifier: GPL-2.0</span></span><br><span class="line"><span class="comment">// Copyright (c) 2020 Facebook</span></span><br><span class="line"></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;linux/bpf.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;stdint.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&lt;bpf/bpf_helpers.h&gt;</span></span></span><br><span class="line"><span class="meta">#<span class="keyword">include</span> <span class="string">&quot;bpf_misc.h&quot;</span></span></span><br><span class="line"></span><br><span class="line"><span class="type">char</span> _license[] SEC(<span class="string">&quot;license&quot;</span>) = <span class="string">&quot;GPL&quot;</span>;</span><br><span class="line"></span><br><span class="line"><span class="class"><span class="keyword">struct</span> &#123;</span></span><br><span class="line">	__uint(type, BPF_MAP_TYPE_PERF_EVENT_ARRAY);</span><br><span class="line">	__uint(value_size, <span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">	__uint(key_size, <span class="keyword">sizeof</span>(<span class="type">int</span>));</span><br><span class="line">&#125; perfbuf <span class="title function_">SEC</span><span class="params">(<span class="string">&quot;.maps&quot;</span>)</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">const</span> <span class="keyword">volatile</span> <span class="type">int</span> batch_cnt = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line"><span class="type">long</span> sample_val = <span class="number">42</span>;</span><br><span class="line"><span class="type">long</span> dropped __attribute__((aligned(<span class="number">128</span>))) = <span class="number">0</span>;</span><br><span class="line"></span><br><span class="line">SEC(<span class="string">&quot;fentry/&quot;</span> SYS_PREFIX <span class="string">&quot;sys_getpgid&quot;</span>)</span><br><span class="line"><span class="type">int</span> <span class="title function_">bench_perfbuf</span><span class="params">(<span class="type">void</span> *ctx)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> i;</span><br><span class="line"></span><br><span class="line">	<span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; batch_cnt; i++) &#123;</span><br><span class="line">		<span class="keyword">if</span> (bpf_perf_event_output(ctx, &amp;perfbuf, BPF_F_CURRENT_CPU,</span><br><span class="line">					  &amp;sample_val, <span class="keyword">sizeof</span>(sample_val)))</span><br><span class="line">			__sync_add_and_fetch(&amp;dropped, <span class="number">1</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>bpf 内核态的拷贝: bpf_perf_event_output -&gt;bpf_perf_event_output -&gt;  perf_event_output -&gt; perf_output_sample -&gt; memcpy_common</p>
+<p>用户态 libbpf 实现 perf_buffer__poll -&gt; bpf_perf_event_read_simple -&gt; memcpy</p>
+<h3 id="More-details-on-implementation"><a href="#More-details-on-implementation" class="headerlink" title="More details on implementation"></a>More details on implementation</h3><ul>
+<li>mapping to handle wrap arround</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/bpf/ringbuf.c</span></span><br><span class="line">	<span class="comment">/* Each data page is mapped twice to allow &quot;virtual&quot;</span></span><br><span class="line"><span class="comment">	 * continuous read of samples wrapping around the end of ring</span></span><br><span class="line"><span class="comment">	 * buffer area:</span></span><br><span class="line"><span class="comment">	 * ------------------------------------------------------</span></span><br><span class="line"><span class="comment">	 * | meta pages |  real data pages  |  same data pages  |</span></span><br><span class="line"><span class="comment">	 * ------------------------------------------------------</span></span><br><span class="line"><span class="comment">	 * |            | 1 2 3 4 5 6 7 8 9 | 1 2 3 4 5 6 7 8 9 |</span></span><br><span class="line"><span class="comment">	 * ------------------------------------------------------</span></span><br><span class="line"><span class="comment">	 * |            | TA             DA | TA             DA |</span></span><br><span class="line"><span class="comment">	 * ------------------------------------------------------</span></span><br><span class="line"><span class="comment">	 *                               ^^^^^^^</span></span><br><span class="line"><span class="comment">	 *                                  |</span></span><br><span class="line"><span class="comment">	 * Here, no need to worry about special handling of wrapped-around</span></span><br><span class="line"><span class="comment">	 * data due to double-mapped data pages. This works both in kernel and</span></span><br><span class="line"><span class="comment">	 * when mmap()&#x27;ed in user-space, simplifying both kernel and</span></span><br><span class="line"><span class="comment">	 * user-space implementations significantly.</span></span><br><span class="line"><span class="comment">	 */</span></span><br></pre></td></tr></table></figure>
+
+<p>一个物理 page 映射到了两个虚拟 page，这样在读取 ringbuf 末端的连续地址的时候，也不需要特殊处理，而且实际也没有用两个 物理 page，只是页表里面多了一次映射。</p>
+<ul>
+<li>Producer_pos &amp; consumer_pos: 两个 u64，每个独占一个 page，这是为了给用户和内核态的 page 赋予不同的权限。</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// kernel/bpf/ringbuf.c</span></span><br><span class="line"><span class="class"><span class="keyword">struct</span> <span class="title">bpf_ringbuf</span> &#123;</span></span><br><span class="line">	<span class="type">wait_queue_head_t</span> waitq;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">irq_work</span> <span class="title">work</span>;</span></span><br><span class="line">	u64 mask;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">page</span> **<span class="title">pages</span>;</span></span><br><span class="line">	<span class="type">int</span> nr_pages;</span><br><span class="line">	<span class="type">spinlock_t</span> spinlock ____cacheline_aligned_in_smp;</span><br><span class="line">	<span class="comment">/* Consumer and producer counters are put into separate pages to allow</span></span><br><span class="line"><span class="comment">	 * mapping consumer page as r/w, but restrict producer page to r/o.</span></span><br><span class="line"><span class="comment">	 * This protects producer position from being modified by user-space</span></span><br><span class="line"><span class="comment">	 * application and ruining in-kernel position tracking.</span></span><br><span class="line"><span class="comment">	 */</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> consumer_pos __aligned(PAGE_SIZE);</span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> producer_pos __aligned(PAGE_SIZE);</span><br><span class="line">	<span class="type">char</span> data[] __aligned(PAGE_SIZE);</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li>后面在 6.1 提出了  user ringbuf，没有详细研究，大致功能就是可以从用户往内核态通过 bpf userringbuf 传数据</li>
+</ul>
+<p>User ringbuf patch: <a target="_blank" rel="noopener" href="https://github.com/torvalds/linux/commit/583c1f420173f7d84413a1a1fbf5109d798b4faa">bpf: Define new BPF_MAP_TYPE_USER_RINGBUF map type · torvalds&#x2F;linux@583c1f4 · GitHub</a> </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">We want to support a ringbuf <span class="built_in">map</span> type where samples are published from</span><br><span class="line">user-space, to be consumed by BPF programs. BPF currently supports a</span><br><span class="line">kernel -&gt; user-space circular ring buffer via the BPF_MAP_TYPE_RINGBUF</span><br><span class="line"><span class="built_in">map</span> type.  We<span class="number">&#x27;ll</span> need to define a new <span class="built_in">map</span> type <span class="keyword">for</span> user-space -&gt; kernel,</span><br><span class="line">as none of the helpers exported <span class="keyword">for</span> BPF_MAP_TYPE_RINGBUF will apply</span><br><span class="line">to a user-space producer ring buffer, and we<span class="number">&#x27;ll</span> want to add one or</span><br><span class="line">more helper functions that would not apply <span class="keyword">for</span> a kernel-producer</span><br><span class="line">ring buffer.</span><br><span class="line"></span><br><span class="line">This patch therefore adds a new BPF_MAP_TYPE_USER_RINGBUF <span class="built_in">map</span> type</span><br><span class="line">definition. The <span class="built_in">map</span> type is useless in its current form, as there is no</span><br><span class="line">way to access or use it <span class="keyword">for</span> anything until we one or more BPF helpers. A</span><br><span class="line">follow-on patch will therefore add a new helper function that allows BPF</span><br><span class="line">programs to run callbacks on samples that are published to the ring</span><br><span class="line">buffer.</span><br><span class="line"></span><br><span class="line">Signed-off-by: David Vernet &lt;<span class="type">void</span>@manifault.com&gt;</span><br><span class="line">Signed-off-by: Andrii Nakryiko &lt;andrii@kernel.org&gt;</span><br><span class="line">Acked-by: Andrii Nakryiko &lt;andrii@kernel.org&gt;</span><br><span class="line">Link: https:<span class="comment">//lore.kernel.org/bpf/20220920000100.477320-2-void@manifault.com</span></span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="测试-cases"><a href="#测试-cases" class="headerlink" title="测试 cases"></a>测试 cases</h3><p>我把测试在我的 intel mac i9 + Virtual box(ubuntu 22.04 VM，4 核) 上跑了一下</p>
+<ol>
+<li>常规场景</li>
+</ol>
+<p><a target="_blank" rel="noopener" href="https://patchwork.ozlabs.org/project/netdev/patch/20200529075424.3139988-5-andriin@fb.com/">https://patchwork.ozlabs.org/project/netdev/patch/20200529075424.3139988-5-andriin@fb.com/</a></p>
+<p>实现了 4 种 benchmark，对 ringbuf 和 perfbuf 都实现了两种</p>
+<blockquote>
+<p>Also implement a set of benchmarks for new BPF ring buffer and existing perf<br>buffer. 4 benchmarks were implemented: 2 variations for each of BPF ringbuf<br>and perfbuf:,</p>
+<ul>
+<li>rb-libbpf utilizes stock libbpf ring_buffer manager for reading data;</li>
+<li>rb-custom implements custom ring buffer setup and reading code, to<br>eliminate overheads inherent in generic libbpf code due to callback<br>functions and the need to update consumer position after each consumed<br>record, instead of batching updates (due to pessimistic assumption that<br>user callback might take long time and thus could unnecessarily hold ring<br>buffer space for too long);</li>
+<li>pb-libbpf uses stock libbpf perf_buffer code with all the default<br>settings, though uses higher-performance raw event callback to minimize<br>unnecessary overhead;</li>
+<li>pb-custom implements its own custom consumer code to minimize any possible<br>overhead of generic libbpf implementation and indirect function calls.</li>
+</ul>
+<p>Benchmarks that have only one producer implement optional back-to-back mode,<br>in which record production and consumption is alternating on the same CPU.<br>This is the highest-throughput happy case, showing ultimate performance<br>achievable with either BPF ringbuf or perfbuf.</p>
+</blockquote>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta prompt_">~/Documents/jammy/tools/testing/selftests/bpf$ </span><span class="language-bash">./benchs/run_bench_ringbufs.sh</span></span><br><span class="line">Single-producer, parallel producer</span><br><span class="line">==================================</span><br><span class="line">rb-libbpf            1.901 ± 1.391M/s (drops 0.002 ± 0.004M/s)</span><br><span class="line">rb-custom            3.226 ± 3.353M/s (drops 0.018 ± 0.035M/s)</span><br><span class="line">pb-libbpf            0.023 ± 0.021M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-custom            0.036 ± 0.034M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Single-producer, parallel producer, sampled notification</span><br><span class="line">========================================================</span><br><span class="line">rb-libbpf            19.028 ± 5.974M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-custom            13.982 ± 12.444M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-libbpf            5.780 ± 5.679M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-custom            2.544 ± 1.797M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Single-producer, back-to-back mode</span><br><span class="line">==================================</span><br><span class="line">rb-libbpf            11.322 ± 9.532M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-libbpf-sampled    7.206 ± 2.298M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-custom            8.772 ± 0.146M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-custom-sampled    8.707 ± 0.134M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-libbpf            0.034 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-libbpf-sampled    4.468 ± 0.030M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-custom            0.034 ± 0.000M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-custom-sampled    4.511 ± 0.043M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Ringbuf back-to-back, effect of sample rate</span><br><span class="line">===========================================</span><br><span class="line">rb-sampled-1         0.030 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-5         0.149 ± 0.006M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-10        0.293 ± 0.009M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-25        0.710 ± 0.015M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-50        1.419 ± 0.042M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-100       2.730 ± 0.031M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-250       5.410 ± 0.155M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-500       8.382 ± 0.105M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-1000      18.470 ± 14.494M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-2000      24.252 ± 14.943M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-sampled-3000      69.032 ± 26.645M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Perfbuf back-to-back, effect of sample rate</span><br><span class="line">===========================================</span><br><span class="line">pb-sampled-1         0.059 ± 0.060M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-5         0.299 ± 0.172M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-10        0.576 ± 0.524M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-25        1.466 ± 1.089M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-50        0.905 ± 0.975M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-100       2.817 ± 1.659M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-250       4.348 ± 2.437M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-500       15.098 ± 22.562M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-1000      6.877 ± 5.430M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-2000      4.876 ± 5.380M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-sampled-3000      9.280 ± 13.732M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Ringbuf back-to-back, reserve+commit vs output</span><br><span class="line">==============================================</span><br><span class="line">reserve              17.154 ± 5.395M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">output               6.493 ± 7.867M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Ringbuf sampled, reserve+commit vs output</span><br><span class="line">=========================================</span><br><span class="line">reserve-sampled      7.559 ± 5.264M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">output-sampled       5.649 ± 0.207M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Single-producer, consumer/producer competing on the same CPU, low batch count</span><br><span class="line">=============================================================================</span><br><span class="line">rb-libbpf            0.026 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-custom            0.026 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-libbpf            0.026 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">pb-custom            0.026 ± 0.001M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line"></span><br><span class="line">Ringbuf, multi-producer contention</span><br><span class="line">==================================</span><br><span class="line">rb-libbpf nr_prod 1  6.278 ± 0.226M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-libbpf nr_prod 2  9.459 ± 0.083M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">rb-libbpf nr_prod 3  5.133 ± 0.134M/s (drops 0.000 ± 0.000M/s)</span><br><span class="line">setting affinity to CPU #4 failed: 2</span><br><span class="line">rb-libbpf nr_prod 4  Setting up benchmark &#x27;rb-libbpf&#x27;... (drops Setting up benchmark &#x27;rb-libbpf&#x27;...)</span><br></pre></td></tr></table></figure>
+
+
+
+<p>后面都是翻译 kernel 文档的，虽然看不太懂，就干脆记录下</p>
+<h3 id="一些设计上的考虑-看不懂"><a href="#一些设计上的考虑-看不懂" class="headerlink" title="一些设计上的考虑 [看不懂]"></a>一些设计上的考虑 [看不懂]</h3><p>参考 <code>Documentation/bpf/ringbuf.rst</code></p>
+<p>除了 single ring buf 被最终采用，还有两种候选方案被放弃了。</p>
+<p>其中一个和 BPF_MAP_TYPE_PERF_EVENT_ARRAY 相近，将 BPF_MAP_TYPE_RINGBUF 表示为一个 ring buffers 的数组，但不强制要求 ”同一个 CPU“ 的规则，这和现有的 perf buffer的用法相近，但应用如果想要用任意的 Key 来在 ring buffer 里面查找的话，则不支持。<code>BPF_MAP_TYPE_HASH_OF_MAPS</code> 解决了这个问题。</p>
+<p>此外，考虑到BPF环缓冲区的性能，许多用例只会选择在所有 CPU 之间共享一个简单的单个环缓冲区，对于这种情况，当前的方法可能是多余的。</p>
+<p>另一种方法可以与 BPF MAP 一起引入一个新概念来表示通用 “container” 对象，该对象不一定具有具有 CRUD 接口。 这种方法将增加许多额外的基础支持，必须为 observability 和 verify support 加一堆代码。 它还会使得 BPF 开发人员必须熟悉一些 libbpf 中的新语法等。 <code>BPF_MAP_TYPE_RINGBUF</code> 不支持查找&#x2F;更新&#x2F;删除操作，但其他映射类型也不支持（例如队列和堆栈；数组不支持删除等）。</p>
+<h3 id="一些实现细节"><a href="#一些实现细节" class="headerlink" title="一些实现细节"></a>一些实现细节</h3><p>这种 commit &#x2F; reserve 允许多个 producer 以自然的方式（无论是在不同的 CPU 上，还是在同一 CPU 上&#x2F;在同一个 BPF 程序中）保留独立的记录并使用它们，而不会阻塞其他 producer 。 这意味着，如果 BPF 程序被共享同一 ringbuffer 的另一个 BPF 程序中断，它们都将获得 reserve 的 record，并且可以使用它并独立 commit 。 这也适用于 NMI 上下文，除了由于在 reserve 使用自旋锁之外，在 NMI 上下文中，bpf_ringbuf_reserve() 可能无法获取锁，在这种情况下，即使环形缓冲区未满，reserve 也会失败。</p>
+<p>ringbuf 内部实现为 2 的幂大小的循环缓冲区，具有两个逻辑且不断增加的计数器：</p>
+<p>consumer_pos 显示 consumer 消耗了数据的逻辑位置；</p>
+<p>producer_pos 表示所有 producer 保留的数据量。</p>
+<p>每次保留记录时，“拥有”该记录的 producer 将成功地推进 producer pos。 不过，此时数据还没有准备好被使用。 每个记录都有 8 个字节的 record，其中包含 reserved record 的长度，以及两个额外 bits：BPF_RINGBUF_BUSY_BIT，表示该记录仍在处理中；BPF_RINGBUF_DISCARD_BIT，如果记录被丢弃，则可能在提交时设置。 在后一种情况下， consumer 应该跳过该记录并继续下一个 record。 record header 还对记录 ring buf data area 的 offset（in pages）进行编码。 这允许 bpf_ringbuf_commit()&#x2F;bpf_ringbuf_discard() 仅接受指向 record 本身的指针，而不需要指向 ringbuf 本身的指针。 </p>
+<p> producer 计数器增量在自旋锁下序列化，因此 reserve 之间有严格的顺序。 另一方面，提交是完全无锁且独立的。 所有记录都按预订顺序可供 consumer 使用，但前提是所有先前的记录都已提交。 因此，速度慢的 producer 可以暂时推迟提交的记录，这些记录是稍后保留的。</p>
+<p>一个有趣的实现是<strong>如何在虚拟内存中连续两次连续映射数据区域</strong>，从而显着简化（并因此加快） producer 和 consumer 的实现。 这使得不需要对必须在 ringbuf 数据区域末尾 wrap 的样本采取任何特殊措施，因为最后一个数据页之后的下一页将再次成为第一个数据页，因此样本仍然会显得完全连续 在虚拟内存中。 请参阅 bpf_ringbuf_area_alloc() 中的注释和简单的 ASCII 图以直观方式显示这一点。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">/* Each data page is mapped twice to allow &quot;virtual&quot;</span></span><br><span class="line"><span class="comment"> * continuous read of samples wrapping around the end of ring</span></span><br><span class="line"><span class="comment"> * buffer area:</span></span><br><span class="line"><span class="comment"> * ------------------------------------------------------</span></span><br><span class="line"><span class="comment"> * | meta pages |  real data pages  |  same data pages  |</span></span><br><span class="line"><span class="comment"> * ------------------------------------------------------</span></span><br><span class="line"><span class="comment"> * |            | 1 2 3 4 5 6 7 8 9 | 1 2 3 4 5 6 7 8 9 |</span></span><br><span class="line"><span class="comment"> * ------------------------------------------------------</span></span><br><span class="line"><span class="comment"> * |            | TA             DA | TA             DA |</span></span><br><span class="line"><span class="comment"> * ------------------------------------------------------</span></span><br><span class="line"><span class="comment"> *                               ^^^^^^^</span></span><br><span class="line"><span class="comment"> *                                  |</span></span><br><span class="line"><span class="comment"> * Here, no need to worry about special handling of wrapped-around</span></span><br><span class="line"><span class="comment"> * data due to double-mapped data pages. This works both in kernel and</span></span><br><span class="line"><span class="comment"> * when mmap()&#x27;ed in user-space, simplifying both kernel and</span></span><br><span class="line"><span class="comment"> * user-space implementations significantly.</span></span><br><span class="line"><span class="comment"> */</span></span><br></pre></td></tr></table></figure>
+
+
+
+<p>BPF Ringbuf 与 Perf Ring Buffer 的另一个区别是新数据可用时的 custom notification通知。 仅当 consumer 已经赶上正在提交的记录时，bpf_ringbuf_commit() 会发送 new record 在 comit 后 available notification。 如果没有， consumer 仍然必须赶上，因此无论如何都会看到新数据，而不需要 extra poll notification。 基准测试（参见tools&#x2F;testing&#x2F;selftests&#x2F;bpf&#x2F;benchs&#x2F;bench_ringbufs.c）表明，这可以实现非常高的吞吐量，而不必求助于“仅通知每个第N个样本”之类的技巧，而这对于perf缓冲区来说是必需的。 对于极端情况，当 BPF 程序需要更多手动控制通知时，commit&#x2F;discard&#x2F;output helper function 接受 BPF_RB_NO_WAKEUP 和 BPF_RB_FORCE_WAKEUP 标志，这些标志可以完全控制数据可用性的通知，但在使用此 API 时需要格外小心和勤勉。</p>
+<p>consumer page + producer page + data pages</p>
+<h3 id="Reference"><a href="#Reference" class="headerlink" title="Reference"></a>Reference</h3><ul>
+<li><a target="_blank" rel="noopener" href="https://www.kernel.org/doc/html/next/bpf/ringbuf.html">https://www.kernel.org/doc/html/next/bpf/ringbuf.html</a> kernel 文档</li>
+<li><a target="_blank" rel="noopener" href="https://arthurchiao.art/blog/bpf-ringbuf-zh/">https://arthurchiao.art/blog/bpf-ringbuf-zh/</a></li>
+</ul>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#perf-ring-buf"><span class="toc-number">1.</span> <span class="toc-text">perf ring buf</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#ring-buf-%E7%9A%84%E6%94%B9%E8%BF%9B"><span class="toc-number">1.1.</span> <span class="toc-text">ring buf 的改进</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%BA%90%E7%A0%81%E5%AE%9E%E7%8E%B0%E8%A7%A3%E6%9E%90"><span class="toc-number">1.2.</span> <span class="toc-text">源码实现解析</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#More-details-on-implementation"><span class="toc-number">1.3.</span> <span class="toc-text">More details on implementation</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E6%B5%8B%E8%AF%95-cases"><span class="toc-number">1.4.</span> <span class="toc-text">测试 cases</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%BA%9B%E8%AE%BE%E8%AE%A1%E4%B8%8A%E7%9A%84%E8%80%83%E8%99%91-%E7%9C%8B%E4%B8%8D%E6%87%82"><span class="toc-number">1.5.</span> <span class="toc-text">一些设计上的考虑 [看不懂]</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#%E4%B8%80%E4%BA%9B%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"><span class="toc-number">1.6.</span> <span class="toc-text">一些实现细节</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#Reference"><span class="toc-number">1.7.</span> <span class="toc-text">Reference</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&text=bpf perf buf and bpf ring buf"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&is_video=false&description=bpf perf buf and bpf ring buf"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=bpf perf buf and bpf ring buf&body=Check out this article: https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&title=bpf perf buf and bpf ring buf"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&name=bpf perf buf and bpf ring buf&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2023/09/17/2023-0917-perf-ring-buf/&t=bpf perf buf and bpf ring buf"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
