@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="link: https:&#x2F;&#x2F;danyangzhuo.com&#x2F;papers&#x2F;Dissertation_Xinhao_Kong.pdf This is a phd dissertation paper, respect. 1. collie: 是个测试系统，考虑各种 rdma 传输系统中的变量，控制变量进行组合测试，判断是否发生异常 异常的判断基于两点 是否产生 PFC pause throughpu">
+<meta property="og:type" content="article">
+<meta property="og:title" content="paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies">
+<meta property="og:url" content="https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="link: https:&#x2F;&#x2F;danyangzhuo.com&#x2F;papers&#x2F;Dissertation_Xinhao_Kong.pdf This is a phd dissertation paper, respect. 1. collie: 是个测试系统，考虑各种 rdma 传输系统中的变量，控制变量进行组合测试，判断是否发生异常 异常的判断基于两点 是否产生 PFC pause throughpu">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250419025236262.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250419024354345.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250419024028139.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250420094730750.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250420143133072.png">
+<meta property="article:published_time" content="2025-04-18T18:23:38.000Z">
+<meta property="article:modified_time" content="2025-04-21T06:03:57.872Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="rdma">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250419025236262.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&text=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&is_video=false&description=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies&body=Check out this article: https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&name=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&t=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-collie"><span class="toc-number">1.</span> <span class="toc-text">1. collie:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-husky"><span class="toc-number">2.</span> <span class="toc-text">2. husky:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-Harmonic"><span class="toc-number">3.</span> <span class="toc-text">1.3 Harmonic</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-04-18T18:23:38.000Z" class="dt-published" itemprop="datePublished">2025-04-19</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/rdma/" rel="tag">rdma</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>link: <a target="_blank" rel="noopener" href="https://danyangzhuo.com/papers/Dissertation_Xinhao_Kong.pdf">https://danyangzhuo.com/papers/Dissertation_Xinhao_Kong.pdf</a></p>
+<p>This is a phd dissertation paper, respect.</p>
+<h2 id="1-collie"><a href="#1-collie" class="headerlink" title="1. collie:"></a>1. collie:</h2><ul>
+<li>是个测试系统，考虑各种 rdma 传输系统中的变量，控制变量进行组合测试，判断是否发生异常</li>
+<li>异常的判断基于两点<ul>
+<li>是否产生 PFC pause</li>
+<li>throughput 是否过低</li>
+</ul>
+</li>
+<li>3.11 Appendix: Performance Anomalies 里面各个案例逐一分析讲得挺好的，下图中 16 处都可能有些相关的异常情况。<ul>
+<li>Root cause #1: Receive WQE cache misses bottleneck RNIC receiving rate.</li>
+<li>Root cause #2: Interconnect Context Memory cache misses reduce RNIC sending rates. (存 QP 的）</li>
+<li>Root cause #3: PCIe controller blocks RNIC from reading host memory</li>
+<li>Root cause #4: RNIC packet processing bottleneck.</li>
+<li>Root cause #5: Host topology causes PCIe latency to increase, and this bottlenecks RNIC receiving rate.</li>
+<li>Root cause #6: RDMA NIC has potential in-NIC incast&#x2F;congestion</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/image-20250419025236262.png" alt="image-20250419025236262"></p>
+<h2 id="2-husky"><a href="#2-husky" class="headerlink" title="2. husky:"></a>2. husky:</h2><ul>
+<li>混部在一起的 rdma 用户会相互影响，包括<ul>
+<li>data verbs：不同 data verbs 共存传输工作时，分配不均，比如 atomic operation 就会明显 throughput 较低。这是因为不同 data verbs 消耗的 resource 是不一样的</li>
+<li>control verbs： register MR 不太影响性能，deregister MR 会导致性能很差，因为它优先级很高，其他操作都像停止了，导致较多的 cache miss</li>
+<li>error handling：当handle 一些error，比如 RNR（receiver NOT ready），其他传输的连接性能很差</li>
+<li>PCIe bandwidth will only become the bottleneck when the request size is in a specific range.</li>
+</ul>
+</li>
+</ul>
+<p>relationship between 3 factors and micro-resources:</p>
+<p><img src="/../figures/image-20250419024354345.png" alt="image-20250419024354345"></p>
+<ul>
+<li>4.10 里面关于 RDMA 过程中的 PCIe 开销分析也挺好的</li>
+</ul>
+<p>网络包总大小（假设 payload 是 29 Bytes）：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Bytes(network)</span><br><span class="line">= Bytes(payload) + Bytes(Ethernet) + Bytes(IP) + Bytes(UDP) + Bytes(IB)</span><br><span class="line">= 29 + 38 + 20 + 8 + 32</span><br><span class="line">= 127(bytes)</span><br></pre></td></tr></table></figure>
+
+<p>PCIe 传输量：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line">Bytes(PCIe) </span><br><span class="line">= Bytes(payload) + Bytes(payload TLP) + Bytes(WQE) + Bytes(WQE TLP) + Bytes(Doorbell) + Bytes(DB TLP)</span><br><span class="line">= 29 + 20 + 36 + 20 + 64 + 20</span><br><span class="line">= 189(bytes)</span><br></pre></td></tr></table></figure>
+
+
+
+<ul>
+<li>introudction about RDMA NIC microarchitecture details:</li>
+</ul>
+<p><img src="/../figures/image-20250419024028139.png" alt="image-20250419024028139"></p>
+<ul>
+<li>other findings<ul>
+<li>Other finding #1: Data verbs contend for different RNIC caches.</li>
+<li>Other finding #2: Wide range access across many objects (QP, CQ, MR) causes ICM cache misses</li>
+<li>Other finding #3: The impact of control verbs is restricted by its kernel involvement.</li>
+</ul>
+</li>
+</ul>
+<h2 id="1-3-Harmonic"><a href="#1-3-Harmonic" class="headerlink" title="1.3 Harmonic"></a>1.3 Harmonic</h2><p>这篇文章提出了 hardware-assisted solution（ Harmonic） 来实现 RDMA 网络资源的 performance isolation，减少他们之间相互影响。</p>
+<ul>
+<li><p>主要挑战有二：</p>
+<ul>
+<li>一则，需要准确测量各种 resource 的使用情况<ul>
+<li>RDMA bypass kernel，软件侧拿不到信息</li>
+<li>RNIC 也只暴露了一些综合的指标，包括 PCIe，RNIC 的 cache miss 之类的，但其实不知道每个 用户 的资源使用情况。</li>
+</ul>
+</li>
+<li>二则，需要找到合适 rate limit 的 entry point<ul>
+<li>software 不可限速，因为协议栈都在 RNIC 里面。</li>
+<li>RNIC 有限速功能，但没有对某个 tenant 限速的功能。</li>
+<li>也不能在 RNIC 丢包来进行限速，会显著劣化 RDMA 的性能</li>
+</ul>
+</li>
+</ul>
+</li>
+<li><p>proposed solution</p>
+<ul>
+<li>对于挑战一，用一个 PCIe switch 在 runtime 对 RDMA 资源使用进行统计监控。这样做的原因是所有流量会经过 PCIe switch，而且由于 memory register，内存是 pin 住的，用户使用的物理内存是固定的，所以通过物理地址知道是哪个用户。作者他们通过 FPGA 来做了一个 programable intelligent PCIe Switch(PIPS) 来实现监控流量的功能。通过改 RNIC kernel driver 来拿到物理地址到 用户的 映射。两者结合即可</li>
+<li>对于挑战二，为了 performance isolation， 把 RNIC hardware 的 rate limiter 改了下，现在 RNIC 的 rate limiter 是为了 congestion control，他们根据 congestion 信号来调整速率，因此可以插入一些合适的 congestion 信号给用户，来限制他们的 RDMA 资源的使用。现在的 RNIC 都支持 DCQCN 算法，可以通过生成 CNP（congestion notification packet）来对用户进行限速。此外，为了限制用户对 RDMA 资源的使用，还限制了最大使用 QP 的数量以及 RDMA request 的数量。</li>
+</ul>
+</li>
+<li><p>RDMA workflow 的介绍</p>
+<ul>
+<li>user 与 rdma user library (libibverbs) 交互，可以调用一些 control verbs 和 data verbs。</li>
+<li>应用调用 control verbs， 则会由 kernel driver 处理，kernel driver 会做一些检查，把相关的控制命令发给 RNIC，RNIC 处理之后会将相关结果传递回 kernel driver，kernel driver 再将结果处理返回给用户。RNIC 上的软件是 firmware，当 firmware 处理 control verbs，也会牵涉到一些 ASIC 硬件里的状态。比如建 QP 的时候就会改动 NIC 里面的 cache</li>
+<li>应用可以调用 data verbs 来发送或接收数据，不需要 kernel driver 的参与，就是 bypass kernel。user library 直接通知 RNIC 有 WQE 需要处理，也就是发一个 doorbell 给 RNIC，RNIC 就会通过 DMA 来读取 WQE。</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/image-20250420094730750.png" alt="image-20250420094730750"></p>
+<ul>
+<li>限速的具体实现<ul>
+<li>当 monitor 发现， BPS&#x2F;DRPS&#x2F;PCIe bandwidth 超过 threshold 的时候，就发送 CNP 给用户的连接， Harmonic 会在 Ti interval 之后发 1-4 个 CNP 的包。Ti 通过如下公式计算，有两个需要人工配置的参数， Tmin 和 Tbasic，用来防止频繁发送 CNP。（看 paper 中的实际配置，100us poll 一次当前 throughput，Tmin 和 Tbasic 设为 200us 和 500us。</li>
+<li>另外讲下 CNP，DCQCN 的接收端在看到 ECN 的时候，会向发送方发送 CNP 来表示用户看到了 congestion，看到了 CNP 之后，发送端用户会减速。</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/image-20250420143133072.png" alt="image-20250420143133072"></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-collie"><span class="toc-number">1.</span> <span class="toc-text">1. collie:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-husky"><span class="toc-number">2.</span> <span class="toc-text">2. husky:</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-Harmonic"><span class="toc-number">3.</span> <span class="toc-text">1.3 Harmonic</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&text=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&is_video=false&description=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies&body=Check out this article: https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&title=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&name=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/04/19/2025-0419-large-scale-rdma-anomalies/&t=paper notes - Towards Large-Scale RDMA Networks without Performance Anomalies"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
