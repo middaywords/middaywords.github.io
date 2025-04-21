@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="之前在线上遇到 bpf conntrack 的问题，这里我们解析下它的实现与 bpf lru map。 1. cilium conntrack 介绍可以看一下 cilium maintainer 在 LPC 上的 talk Rethinking BPF conntrack (Aditi Ghag)，将实现细节，和存在的问题都展开说的比较明朗。这里摘取一些关于 conntrack 的介绍。 1.1">
+<meta property="og:type" content="article">
+<meta property="og:title" content="cilium conntrack &amp; bpf lru map">
+<meta property="og:url" content="https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="之前在线上遇到 bpf conntrack 的问题，这里我们解析下它的实现与 bpf lru map。 1. cilium conntrack 介绍可以看一下 cilium maintainer 在 LPC 上的 talk Rethinking BPF conntrack (Aditi Ghag)，将实现细节，和存在的问题都展开说的比较明朗。这里摘取一些关于 conntrack 的介绍。 1.1">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250302041854491.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250302042112751.png">
+<meta property="og:image" content="https://docs.kernel.org/_images/map_lru_hash_update.svg">
+<meta property="article:published_time" content="2025-03-01T19:39:25.000Z">
+<meta property="article:modified_time" content="2025-03-02T12:00:09.933Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="bpf">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="kernel">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250302041854491.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>cilium conntrack &amp; bpf lru map</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/02/19/2025-0219-other-rcu-flavor/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&text=cilium conntrack &amp; bpf lru map"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&is_video=false&description=cilium conntrack &amp; bpf lru map"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=cilium conntrack &amp; bpf lru map&body=Check out this article: https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&name=cilium conntrack &amp; bpf lru map&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&t=cilium conntrack &amp; bpf lru map"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-cilium-conntrack-%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">1. cilium conntrack 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-connection-%E7%9A%84-lifecycle-management"><span class="toc-number">1.2.</span> <span class="toc-text">1.3 connection 的 lifecycle management</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.3.</span> <span class="toc-text">1.2 存在的问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-lru-map"><span class="toc-number">1.4.</span> <span class="toc-text">bpf lru map</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-issue-about-BPF-LRU-map-cilium-conntrack"><span class="toc-number">2.</span> <span class="toc-text">3. issue about BPF LRU map &amp; cilium conntrack</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        cilium conntrack &amp; bpf lru map
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-03-01T19:39:25.000Z" class="dt-published" itemprop="datePublished">2025-03-02</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/bpf/" rel="tag">bpf</a>, <a class="p-category" href="/tags/kernel/" rel="tag">kernel</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>之前在线上遇到 bpf conntrack 的问题，这里我们解析下它的实现与 bpf lru map。</p>
+<h1 id="1-cilium-conntrack-介绍"><a href="#1-cilium-conntrack-介绍" class="headerlink" title="1. cilium conntrack 介绍"></a>1. cilium conntrack 介绍</h1><p>可以看一下 cilium maintainer 在 LPC 上的 talk <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=OrVn9VocdnA">Rethinking BPF conntrack (Aditi Ghag)</a>，将实现细节，和存在的问题都展开说的比较明朗。这里摘取一些关于 conntrack 的介绍。</p>
+<h2 id="1-1-介绍"><a href="#1-1-介绍" class="headerlink" title="1.1 介绍"></a>1.1 介绍</h2><p>我们从一个从 pod &lt;-&gt; svc vip 的 reqeuest&#x2F;response 场景来看 cilium conntrack 是如何运作的。</p>
+<p>对 request path 来说</p>
+<p><img src="/../figures/image-20250302041854491.png" alt="image-20250302041854491"></p>
+<p>对于 reply path 来说</p>
+<p><img src="/../figures/image-20250302042112751.png" alt="image-20250302042112751"></p>
+<h2 id="1-3-connection-的-lifecycle-management"><a href="#1-3-connection-的-lifecycle-management" class="headerlink" title="1.3 connection 的 lifecycle management"></a>1.3 connection 的 lifecycle management</h2><p>cilium 在 bpf lru map 中管理 connection entry。</p>
+<ol>
+<li>当 connection entry 被创建的时候，它会被赋予一个 default timeout，当有 flow packet 时会 refresh timeout</li>
+<li>Default timeout 是比较长的，需要配合一些 long-lived connection</li>
+<li>GC： userspace 会定期异步地清理过期的 connection entry</li>
+</ol>
+<h2 id="1-2-存在的问题"><a href="#1-2-存在的问题" class="headerlink" title="1.2 存在的问题"></a>1.2 存在的问题</h2><ol>
+<li>复杂的带外(out-of-band) conntrack entry 回收机制<ol>
+<li>不能太频繁消耗过多 cpu</li>
+<li>也不能让 lru map 里面存在很多 expired entries（可能会导致性能差，资源利用率不好），需要平衡两者。</li>
+</ol>
+</li>
+<li>新连接建立时，有些应用使用同一个 source port。conntrack entry expire 了但没来得及被 GC，被重复利用，会导致总是选择 svc 的同一个 backend。</li>
+<li>流量大的时候有 Bpf lru map failure。</li>
+</ol>
+<p>talk 中提到他们考虑会使用 socket storage，结合 socket state 来做 load balancing，但是 socket storage 也有一些挑战，可以具体看 talk。后面讨论环节，关于 sk_storage 的东西也是挺有意思的，总之  Aditi Ghag 的关键诉求在于，需要加速 gc 的 removal 过程，在 socket 被 free 的时候，把相关 conntrack free 掉，而不是依靠 timeout。</p>
+<h2 id="bpf-lru-map"><a href="#bpf-lru-map" class="headerlink" title="bpf lru map"></a>bpf lru map</h2><p>具体的实现过程在下图中描述的比较详细了，参考 <a target="_blank" rel="noopener" href="https://docs.kernel.org/bpf/map_hash.html#bpf-map-type-lru-hash-and-variants">https://docs.kernel.org/bpf/map_hash.html#bpf-map-type-lru-hash-and-variants</a></p>
+<p><img src="https://docs.kernel.org/_images/map_lru_hash_update.svg" alt="Diagram outlining the LRU eviction steps taken during map update."></p>
+<h1 id="3-issue-about-BPF-LRU-map-cilium-conntrack"><a href="#3-issue-about-BPF-LRU-map-cilium-conntrack" class="headerlink" title="3. issue about BPF LRU map &amp; cilium conntrack"></a>3. issue about BPF LRU map &amp; cilium conntrack</h1><p>当 cilium conntrack table 满的时候，我们关于 bpf cpu 的监控指标会暴涨，达到 50 个核，这个节点接近卡死。我们也采取了一些方法来避免 conntrack table 变满，但是如上文所说，conntrack 的 gc 在用户态，如果用户态的 conntrack table 的 gc 因为某些原因（比如 cilium-agent 挂了）无法执行或延后了，那么 conntrack 表还是会变满。</p>
+<p>how to reproduce: 用很多 client，起很多并发短连接，把 cilium conntrack 填满即可触发。</p>
+<p>base kernel: ubuntu22, 5.15.0-26。</p>
+<p>通过 perf 发现很多 cpu 花费在 bpf lru map 的 pop 操作</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line">wrk:worker_33 47181 1831047.757047:     609938 cycles: </span><br><span class="line">	ffffffffa4f2e9b4 native_queued_spin_lock_slowpath+0x1d4 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5af6eee _raw_spin_lock+0x1e ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5054417 bpf_lru_pop_free+0x1b7 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa504e7e7 prealloc_lru_pop+0x27 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa50508bc htab_lru_map_update_elem+0x18c ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5049262 bpf_map_update_elem+0x12 ([kernel.kallsyms])</span><br><span class="line">	ffffffffc1745d56 bpf_prog_f4435f2b40df09b2_tail_handle_ipv4_cont+0xb6a (bpf_prog_f4435f2b40df09b2_tail_handle_ipv4_cont)</span><br><span class="line">	ffffffffc13d07ff cls_bpf_classify+0x2df ([kernel.kallsyms])</span><br><span class="line">	ffffffffa58beaca tcf_classify+0x7a ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584ca91 __netif_receive_skb_core+0x431 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d5ef __netif_receive_skb_one_core+0x3f ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d695 __netif_receive_skb+0x15 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d8c9 process_backlog+0xa9 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584ef80 __napi_poll+0x30 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584f33c net_rx_action+0x11c ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5e000da __softirqentry_text_start+0xda ([kernel.kallsyms])</span><br><span class="line">	ffffffffa4ebcc89 irq_exit_rcu+0x79 ([kernel.kallsyms])</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>上面栈告诉我们卡在了自旋锁，出现了锁争用的情况，结合代码分析，是保护 global lru list 的锁。</p>
+<p>进一步分析 perf 栈，发现很多卡在了 <code>__bpf_lru_list_shrink</code> 的过程。</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">wrk:worker_33 47181 1831047.754442:     644543 cycles: </span><br><span class="line">	ffffffffa5af6f57 _raw_spin_lock_irqsave+0x27 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa504e6fc htab_lru_map_delete_node+0x6c ([kernel.kallsyms])</span><br><span class="line">	ffffffffa50541e4 __bpf_lru_list_shrink+0xe4 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa50544e5 bpf_lru_pop_free+0x285 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa504e7e7 prealloc_lru_pop+0x27 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa50508bc htab_lru_map_update_elem+0x18c ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5049262 bpf_map_update_elem+0x12 ([kernel.kallsyms])</span><br><span class="line">	ffffffffc1745d56 bpf_prog_f4435f2b40df09b2_tail_handle_ipv4_cont+0xb6a (bpf_prog_f4435f2b40df09b2_tail_handle_ipv4_cont)</span><br><span class="line">	ffffffffc13d07ff cls_bpf_classify+0x2df ([kernel.kallsyms])</span><br><span class="line">	ffffffffa58beaca tcf_classify+0x7a ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584ca91 __netif_receive_skb_core+0x431 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d5ef __netif_receive_skb_one_core+0x3f ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d695 __netif_receive_skb+0x15 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584d8c9 process_backlog+0xa9 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584ef80 __napi_poll+0x30 ([kernel.kallsyms])</span><br><span class="line">	ffffffffa584f33c net_rx_action+0x11c ([kernel.kallsyms])</span><br><span class="line">	ffffffffa5e000da __softirqentry_text_start+0xda ([kernel.kallsyms])</span><br><span class="line">	ffffffffa4ebcc89 irq_exit_rcu+0x79 ([kernel.kallsyms])</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>利用 addr2line 定位到具体是哪一行</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">ffffffffa50541e4 __bpf_lru_list_shrink+0xe4 ([kernel.kallsyms])</span><br><span class="line">:~<span class="comment"># addr2line -f -e vmlinux 0xFFFFFFFF812541E4</span></span><br><span class="line">__bpf_lru_list_shrink</span><br><span class="line">/mnt/src/jammy/kernel/bpf/bpf_lru_list.c:279</span><br><span class="line">__bpf_lru_list_shrink -&gt; lru-&gt;del_from_htab() force shrink by ignoring the reference bit.</span><br></pre></td></tr></table></figure>
+
+<p>从 perf 的结果来看 159680&#x2F;159725 是在 htab_lru_map_update_elem 的 bpf_lru_pop_free 函数中，都在等待 lru 的 global spin lock，其他都是在 <code>__bpf_lru_list_shrink</code> 中从 lru global inactive list 里面尝试 shrink lru-node，具体在 force shrink 的步骤中，通过 ignore reference bit 来执行。</p>
+<p>所以首先怀疑</p>
+<ol>
+<li>lru global inactive list 是空的</li>
+<li>可能几乎没有 lru node 的 reference bit 是 0。</li>
+</ol>
+<p>后面我们用 bpftrace hook 了 <code>__bpf_lru_node_move</code> 函数，发现 active 和 inactive 的成员数量差不多，说明猜想一错误。</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">__bpf_lru_node_move to <span class="built_in">type</span>(BPF_LRU_LIST_T_INACTIVE) on cpu 25. node-&gt;ref(0). active_count(1249960). inactive_count(1249961)</span><br><span class="line">__bpf_lru_node_move to <span class="built_in">type</span>(BPF_LRU_LIST_T_ACTIVE) on cpu 56. node-&gt;ref(1). active_count(1249959). inactive_count(1249962)</span><br></pre></td></tr></table></figure>
+
+<p>我们再 trace 了 <code>__bpf_lru_list_shrink</code>，发现 lru node 的 reference count 都是 0，不是 1。这说明之前的猜想都是错误的。事实是 lru inactive list 里面有很多 lru node 无法被删除，而且他们的引用计数是 0.</p>
+<p>我们对于发生问题的场景，再 hook 了 htab_lru_map_delete_node 函数，打印其返回值，发现它大部分时候 ret false，有可能是</p>
+<ul>
+<li>htab_lock_bucket fail，但也 bucket level 也不会一直 fail。</li>
+<li>inactive list 里面的尾部的一些 Lru-node 不在 hash table 里面（说明发生内存泄漏）</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br></pre></td><td class="code"><pre><span class="line"></span><br><span class="line"><span class="comment">/* It is called from the bpf_lru_list when the LRU needs to delete</span></span><br><span class="line"><span class="comment"> * older elements from the htab.</span></span><br><span class="line"><span class="comment"> */</span></span><br><span class="line"><span class="type">static</span> <span class="type">bool</span> <span class="title function_">htab_lru_map_delete_node</span><span class="params">(<span class="type">void</span> *arg, <span class="keyword">struct</span> bpf_lru_node *node)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bpf_htab</span> *<span class="title">htab</span> =</span> (<span class="keyword">struct</span> bpf_htab *)arg;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">htab_elem</span> *<span class="title">l</span> =</span> <span class="literal">NULL</span>, *tgt_l;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">hlist_nulls_head</span> *<span class="title">head</span>;</span></span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">hlist_nulls_node</span> *<span class="title">n</span>;</span></span><br><span class="line">	<span class="type">unsigned</span> <span class="type">long</span> flags;</span><br><span class="line">	<span class="class"><span class="keyword">struct</span> <span class="title">bucket</span> *<span class="title">b</span>;</span></span><br><span class="line">	<span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">	tgt_l = container_of(node, <span class="keyword">struct</span> htab_elem, lru_node);</span><br><span class="line">	b = __select_bucket(htab, tgt_l-&gt;hash);</span><br><span class="line">	head = &amp;b-&gt;head;</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 1. lock failed</span></span><br><span class="line">	ret = htab_lock_bucket(htab, b, tgt_l-&gt;hash, &amp;flags);</span><br><span class="line">	<span class="keyword">if</span> (ret)</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line"></span><br><span class="line">	hlist_nulls_for_each_entry_rcu(l, n, head, hash_node)</span><br><span class="line">		<span class="keyword">if</span> (l == tgt_l) &#123;</span><br><span class="line">			hlist_nulls_del_rcu(&amp;l-&gt;hash_node);</span><br><span class="line">			check_and_free_timer(htab, l);</span><br><span class="line">			<span class="keyword">break</span>;</span><br><span class="line">		&#125;</span><br><span class="line"></span><br><span class="line">	htab_unlock_bucket(htab, b, tgt_l-&gt;hash, flags);</span><br><span class="line">  </span><br><span class="line">  <span class="comment">// 在 inactive list 里面无法找到 lru node</span></span><br><span class="line">	<span class="keyword">return</span> l == tgt_l;</span><br><span class="line">&#125;</span><br><span class="line"></span><br></pre></td></tr></table></figure>
+
+<p>所以大概是发生了 mem leak，inactive list 里面无法找到 lru node，有两种可能</p>
+<ul>
+<li>忘记 insert 到 hashbucket。</li>
+<li>删除的时候，只从 hash 里面删除，但没从 lru list 里面删除。</li>
+</ul>
+<p>然后就找到相关 patch 了，发现是第一种情况，<a target="_blank" rel="noopener" href="https://lore.kernel.org/all/20230522154558.2166815-1-aspsk@isovalent.com/">https://lore.kernel.org/all/20230522154558.2166815-1-aspsk@isovalent.com/</a></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-1"><a class="toc-link" href="#1-cilium-conntrack-%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.</span> <span class="toc-text">1. cilium conntrack 介绍</span></a><ol class="toc-child"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-1-%E4%BB%8B%E7%BB%8D"><span class="toc-number">1.1.</span> <span class="toc-text">1.1 介绍</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-3-connection-%E7%9A%84-lifecycle-management"><span class="toc-number">1.2.</span> <span class="toc-text">1.3 connection 的 lifecycle management</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-2-%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98"><span class="toc-number">1.3.</span> <span class="toc-text">1.2 存在的问题</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#bpf-lru-map"><span class="toc-number">1.4.</span> <span class="toc-text">bpf lru map</span></a></li></ol></li><li class="toc-item toc-level-1"><a class="toc-link" href="#3-issue-about-BPF-LRU-map-cilium-conntrack"><span class="toc-number">2.</span> <span class="toc-text">3. issue about BPF LRU map &amp; cilium conntrack</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&text=cilium conntrack &amp; bpf lru map"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&is_video=false&description=cilium conntrack &amp; bpf lru map"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=cilium conntrack &amp; bpf lru map&body=Check out this article: https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&title=cilium conntrack &amp; bpf lru map"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&name=cilium conntrack &amp; bpf lru map&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/&t=cilium conntrack &amp; bpf lru map"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>

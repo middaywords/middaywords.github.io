@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="这篇介绍一些常用的 rdma 相关的诊断工具 1. tcpdump编译 12345678wget https:&#x2F;&#x2F;www.tcpdump.org&#x2F;release&#x2F;tcpdump-4.99.5.tar.xzwget https:&#x2F;&#x2F;www.tcpdump.org&#x2F;release&#x2F;libpcap-1.10.5.tar.xz tar -xvf libpcap-1.10.5.tar.xztar -xvf">
+<meta property="og:type" content="article">
+<meta property="og:title" content="rdma diagnosis">
+<meta property="og:url" content="https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="这篇介绍一些常用的 rdma 相关的诊断工具 1. tcpdump编译 12345678wget https:&#x2F;&#x2F;www.tcpdump.org&#x2F;release&#x2F;tcpdump-4.99.5.tar.xzwget https:&#x2F;&#x2F;www.tcpdump.org&#x2F;release&#x2F;libpcap-1.10.5.tar.xz tar -xvf libpcap-1.10.5.tar.xztar -xvf">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250419024028139.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250420144600215.png">
+<meta property="og:image" content="https://docscontent.nvidia.com/dims4/default/5a42e95/2147483647/strip/true/crop/935x633+0+0/resize/935x633!/quality/90/?url=https://k3-prod-nvidia-docs.s3.us-west-2.amazonaws.com/brightspot/confluence/00000195-c429-d586-adbf-d6fdfe2a0000/doca/sdk/images/download/attachments/3453016388/image-2024-10-7_11-52-45-version-1-modificationdate-1734472193010-api-v2.png">
+<meta property="article:published_time" content="2025-03-27T13:09:19.000Z">
+<meta property="article:modified_time" content="2025-04-21T05:58:31.518Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="rdma">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250419024028139.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>rdma diagnosis</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        <li><a class="icon" aria-label="Previous post" href="/2025/04/03/2025-0403-rpc-datapath/"><i class="fa-solid fa-chevron-left" aria-hidden="true" onmouseover="$('#i-prev').toggle();" onmouseout="$('#i-prev').toggle();"></i></a></li>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/03/02/2025-0302-cilium-conntrack-and-lru-map/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&text=rdma diagnosis"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&is_video=false&description=rdma diagnosis"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rdma diagnosis&body=Check out this article: https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&name=rdma diagnosis&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&t=rdma diagnosis"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-tcpdump"><span class="toc-number">1.</span> <span class="toc-text">1. tcpdump</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-PCM"><span class="toc-number">2.</span> <span class="toc-text">2. PCM</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#pcm-pcie"><span class="toc-number">2.1.</span> <span class="toc-text">pcm-pcie</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#pcm-iio"><span class="toc-number">2.2.</span> <span class="toc-text">pcm-iio</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Neo-host"><span class="toc-number">3.</span> <span class="toc-text">3. Neo host</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-doca-flow-tune"><span class="toc-number">4.</span> <span class="toc-text">4.  doca flow tune</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        rdma diagnosis
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-03-27T13:09:19.000Z" class="dt-published" itemprop="datePublished">2025-03-27</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/rdma/" rel="tag">rdma</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>这篇介绍一些常用的 rdma 相关的诊断工具</p>
+<h2 id="1-tcpdump"><a href="#1-tcpdump" class="headerlink" title="1. tcpdump"></a>1. tcpdump</h2><p><strong>编译</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">wget https://www.tcpdump.org/release/tcpdump-4.99.5.tar.xz</span><br><span class="line">wget https://www.tcpdump.org/release/libpcap-1.10.5.tar.xz </span><br><span class="line">tar -xvf libpcap-1.10.5.tar.xz</span><br><span class="line">tar -xvf tcpdump-4.99.5.tar.xz</span><br><span class="line">apt-get install libibverbs-dev</span><br><span class="line"><span class="comment"># ensure this library is installed, otherwise rdma support is not enabled in compile phase</span></span><br><span class="line"><span class="built_in">cd</span> libpcap-1.10.5 &amp;&amp; ./configure &amp;&amp; make</span><br><span class="line"><span class="built_in">cd</span> ../tcpdump-4.99.5 &amp;&amp; ./configure &amp;&amp; make</span><br></pre></td></tr></table></figure>
+
+<p>另外，关于 rdma 的抓包实现，可以参考 <a target="_blank" rel="noopener" href="https://github.com/the-tcpdump-group/libpcap/blob/master/pcap-rdmasniff.c#L203">代码段</a> ，大概流程是：</p>
+<ol>
+<li>建一个 QP， 类型为 <code>IBV_QPT_RAW_PACKET</code>，表示可以抓到 raw packet（可以保留 ethernet header 信息， RoCE header 信息等）</li>
+<li>建一个 flow steering rule，类型为 <code>IBV_FLOW_ATTR_SNIFFER</code>，用来接收所有 port 的 traffic</li>
+<li>之后一直对这个 QP 执行 post_recv，poll cq 收到数据后，对收到的包执行 pcap filter 相关逻辑</li>
+</ol>
+<p><strong>使用</strong></p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">root@testpod1:~<span class="comment"># rdma link</span></span><br><span class="line"><span class="built_in">link</span> mlx5_0/1 state ACTIVE physical_state LINK_UP</span><br><span class="line"><span class="built_in">link</span> mlx5_1/1 state DOWN physical_state DISABLED</span><br><span class="line"><span class="built_in">link</span> mlx5_2/1 state DOWN physical_state DISABLED</span><br><span class="line"><span class="built_in">link</span> mlx5_3/1 state DOWN physical_state DISABLED</span><br><span class="line"><span class="built_in">link</span> mlx5_4/1 state ACTIVE physical_state LINK_UP netdev net1</span><br><span class="line">root@testpod1:~/tcpdump-4.99.5<span class="comment"># ./tcpdump -i mlx5_4 -nnvv</span></span><br><span class="line">tcpdump: listening on mlx5_4, link-type EN10MB (Ethernet), snapshot length 10000 bytes</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="2-PCM"><a href="#2-PCM" class="headerlink" title="2. PCM"></a>2. PCM</h2><p><a target="_blank" rel="noopener" href="https://github.com/intel/pcm">https://github.com/intel/pcm</a></p>
+<p>可以帮助我们看到 PCIe 的带宽</p>
+<h3 id="pcm-pcie"><a href="#pcm-pcie" class="headerlink" title="pcm-pcie"></a>pcm-pcie</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br></pre></td><td class="code"><pre><span class="line">root@tess-node-hx4bg-tess19:/# pcm-pcie </span><br><span class="line"></span><br><span class="line"> Intel(r) Performance Counter Monitor: PCIe Bandwidth Monitoring Utility </span><br><span class="line"> This utility measures PCIe bandwidth in real-time</span><br><span class="line"></span><br><span class="line"> PCIe event definitions (each event counts as a transfer): </span><br><span class="line">   PCIe read events (PCI devices reading from memory - application writes to disk/network/PCIe device):</span><br><span class="line">     PCIePRd   - PCIe UC read transfer (partial cache line)</span><br><span class="line">     PCIeRdCur* - PCIe read current transfer (full cache line)</span><br><span class="line">         On Haswell Server PCIeRdCur counts both full/partial cache lines</span><br><span class="line">     RFO*      - Demand Data RFO</span><br><span class="line">     CRd*      - Demand Code Read</span><br><span class="line">     DRd       - Demand Data Read</span><br><span class="line">     PCIeNSWr  - PCIe Non-snoop write transfer (partial cache line)</span><br><span class="line">   PCIe write events (PCI devices writing to memory - application reads from disk/network/PCIe device):</span><br><span class="line">     PCIeWiLF  - PCIe Write transfer (non-allocating) (full cache line)</span><br><span class="line">     PCIeItoM  - PCIe Write transfer (allocating) (full cache line)</span><br><span class="line">     PCIeNSWr  - PCIe Non-snoop write transfer (partial cache line)</span><br><span class="line">     PCIeNSWrF - PCIe Non-snoop write transfer (full cache line)</span><br><span class="line">     ItoM      - PCIe write full cache line</span><br><span class="line">     RFO       - PCIe partial Write</span><br><span class="line">   CPU MMIO events (CPU reading/writing to PCIe devices):</span><br><span class="line">     UCRdF     - read from uncacheable memory, including MMIO</span><br><span class="line">     WCiL      - streaming store (partial cache line), includes MOVDIRI</span><br><span class="line"></span><br><span class="line">     WCiLF     - streaming store (full cache line), includes MOVDIR64</span><br><span class="line"></span><br><span class="line">     PRd       - MMIO Read [Haswell Server only] (Partial Cache Line)</span><br><span class="line">     WiL       - MMIO Write (Full/Partial)</span><br><span class="line"></span><br><span class="line"> * - NOTE: Depending on the configuration of your BIOS, this tool may report &#x27;0&#x27; if the message</span><br><span class="line"></span><br><span class="line">Detected Intel(R) Xeon(R) Platinum 8352M CPU @ 2.30GHz &quot;Intel(r) microarchitecture codename Icelake-SP&quot; stepping 6</span><br><span class="line">Skt |  PCIRdCur  |  ItoM  |  ItoMCacheNear  |  UCRdF  |  WiL  </span><br><span class="line"> 0      513 K     2578          4002             0     4848   </span><br><span class="line"> 1     2716          0           136             0     1024   </span><br><span class="line">--------------------------------------------------------------</span><br><span class="line"> *      515 K     2578          4138             0     5872   </span><br><span class="line"></span><br><span class="line">Skt |  PCIRdCur  |  ItoM  |  ItoMCacheNear  |  UCRdF  |  WiL  </span><br><span class="line"> 0      510 K     1756          5702             0     5834   </span><br><span class="line"> 1     3110          0             4             0     1192   </span><br><span class="line">--------------------------------------------------------------</span><br><span class="line"> *      513 K     1756          5706             0     7026   </span><br></pre></td></tr></table></figure>
+
+<p>adding <code>-B</code></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line">Detected Intel(R) Xeon(R) Platinum 8352M CPU @ 2.30GHz &quot;Intel(r) microarchitecture codename Icelake-SP&quot; stepping 6</span><br><span class="line">Skt |  PCIRdCur  |  ItoM  |  ItoMCacheNear  |  UCRdF  |  WiL  |  PCIe Rd (B)  |  PCIe Wr (B)  </span><br><span class="line"> 0      538 K       45 K        6940             0     6624          34 M          3332 K     </span><br><span class="line"> 1     3362          0             8             0     1006         215 K           512       </span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> *      541 K       45 K        6948             0     7630          34 M          3332 K     </span><br><span class="line"></span><br><span class="line">Skt |  PCIRdCur  |  ItoM  |  ItoMCacheNear  |  UCRdF  |  WiL  |  PCIe Rd (B)  |  PCIe Wr (B)  </span><br><span class="line"> 0      518 K       35 K          10 K           0       10 K        33 M          2960 K     </span><br><span class="line"> 1     3102          0             0             0     1090         198 K             0       </span><br><span class="line">----------------------------------------------------------------------------------------------</span><br><span class="line"> *      521 K       35 K          10 K           0       11 K        33 M          2960 K     </span><br></pre></td></tr></table></figure>
+
+<p>able to see the PCIe Wr&#x2F;Rd total bandwidth</p>
+<h3 id="pcm-iio"><a href="#pcm-iio" class="headerlink" title="pcm-iio"></a>pcm-iio</h3><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"> _____________________________ ________ _______ _______ ________ ____________ __________ ______________ ______________ ____________ ____________ ____________ ________________ </span><br><span class="line">|IIO Stack 4 - PCIe3          |IB write|IB read|OB read|OB write|IOTLB Lookup|IOTLB Miss|Ctxt Cache Hit|512G Cache Hit|1G Cache Hit|2M Cache Hit|4K Cache Hit|IOMMU Mem Access|</span><br><span class="line">|_____________________________|________|_______|_______|________|____________|__________|______________|______________|____________|____________|____________|________________|</span><br><span class="line">| Part0 (1st x16/x8/x4)       | 192 K  |  34 M |   0   |  12 K  |   0        |   0      |   0          |   0          |   0        |   0        |   0        | 360            |</span><br><span class="line">| Part1 (2nd x4)              |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part2 (2nd x8/3rd x4)       |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part3 (4th x4)              |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part4 (1st x16/x8/x4)       |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part5 (2nd x4)              |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part6 (2nd x8/3rd x4)       |   0    |   0   |   0   |   0    |</span><br><span class="line">| Part7 (4th x4)              |   0    |   0   |   0   |   0    |</span><br><span class="line">|_____________________________|________|_______|_______|________|____________|__________|______________|______________|____________|____________|____________|________________|</span><br><span class="line">    |0000:65:00.0|Gen3 x8 |14E4:16D7 Broadcom Inc. and subsidiaries BCM57414 NetXtreme-E 10Gb/25Gb RDMA Ethernet Controller</span><br><span class="line">    |0000:65:00.1|Gen3 x8 |14E4:16D7 Broadcom Inc. and subsidiaries BCM57414 NetXtreme-E 10Gb/25Gb RDMA Ethernet Controller</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="3-Neo-host"><a href="#3-Neo-host" class="headerlink" title="3. Neo host"></a>3. Neo host</h2><p>需要讲下， 对于 ICM， MTT，MPT 这些结构，可以参考下图，ICM 存储 QP cache 在 RNIC 对信息， MTT&#x2F;MPT 则存储 QP reg mr 时的地址转换表的 cache，WQE cache 则存储 WQE 的 cache。</p>
+<p><img src="/../figures/image-20250419024028139.png" alt="image-20250419024028139"></p>
+<p>运行，编译部署等可以参考</p>
+<p><a target="_blank" rel="noopener" href="https://blog.csdn.net/essencelite/article/details/147166790">https://blog.csdn.net/essencelite/article/details/147166790</a></p>
+<p><img src="/../figures/image-20250420144600215.png" alt="image-20250420144600215"></p>
+<h2 id="4-doca-flow-tune"><a href="#4-doca-flow-tune" class="headerlink" title="4.  doca flow tune"></a>4.  doca flow tune</h2><p>neo-host 本来是 MLNX_OFED 里面的，后面都移到 doca-host 里面的，doca-host 里面有类似的功能。</p>
+<p><a target="_blank" rel="noopener" href="https://docs.nvidia.com/doca/sdk/doca+flow+tune+tool/index.html#src-3453016388_id-.DOCAFlowTuneToolv2.9.1-MonitorModeOverview">https://docs.nvidia.com/doca/sdk/doca+flow+tune+tool/index.html#src-3453016388_id-.DOCAFlowTuneToolv2.9.1-MonitorModeOverview</a></p>
+<p><img src="https://docscontent.nvidia.com/dims4/default/5a42e95/2147483647/strip/true/crop/935x633+0+0/resize/935x633!/quality/90/?url=https://k3-prod-nvidia-docs.s3.us-west-2.amazonaws.com/brightspot/confluence/00000195-c429-d586-adbf-d6fdfe2a0000/doca/sdk/images/download/attachments/3453016388/image-2024-10-7_11-52-45-version-1-modificationdate-1734472193010-api-v2.png" alt="image-2024-10-7_11-52-45-version-1-modificationdate-1734472193010-api-v2.png"></p>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#1-tcpdump"><span class="toc-number">1.</span> <span class="toc-text">1. tcpdump</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-PCM"><span class="toc-number">2.</span> <span class="toc-text">2. PCM</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#pcm-pcie"><span class="toc-number">2.1.</span> <span class="toc-text">pcm-pcie</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#pcm-iio"><span class="toc-number">2.2.</span> <span class="toc-text">pcm-iio</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#3-Neo-host"><span class="toc-number">3.</span> <span class="toc-text">3. Neo host</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#4-doca-flow-tune"><span class="toc-number">4.</span> <span class="toc-text">4.  doca flow tune</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&text=rdma diagnosis"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&is_video=false&description=rdma diagnosis"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rdma diagnosis&body=Check out this article: https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&title=rdma diagnosis"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&name=rdma diagnosis&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/03/27/2025-0327-rdma-diagnosis-host/&t=rdma diagnosis"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
