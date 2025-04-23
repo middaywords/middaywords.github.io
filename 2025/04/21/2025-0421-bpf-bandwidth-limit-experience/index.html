@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="bandwidth management is hard, because it involves remote resources. Typically, for bandwidth mangement, we talk about egress traffic shaping, ingress as traffic policing. We refer them in this way bec">
+<meta property="og:type" content="article">
+<meta property="og:title" content="experience on cilium bandwidth manager">
+<meta property="og:url" content="https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="bandwidth management is hard, because it involves remote resources. Typically, for bandwidth mangement, we talk about egress traffic shaping, ingress as traffic policing. We refer them in this way bec">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250422004132330.png">
+<meta property="og:image" content="https://blog.tohojo.dk/media/ebpf-traffic-shaping-comparison.png">
+<meta property="og:image" content="https://blog.tohojo.dk/media/fifo-vs-edt-queueing.svg">
+<meta property="og:image" content="https://blog.tohojo.dk/media/fq-edt-queueing.svg">
+<meta property="og:image" content="https://middaywords.github.io/figures/image-20250422003928471.png">
+<meta property="article:published_time" content="2025-04-21T13:55:59.000Z">
+<meta property="article:modified_time" content="2025-04-23T03:37:37.181Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="network">
+<meta property="article:tag" content="cilium">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/image-20250422004132330.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>experience on cilium bandwidth manager</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/04/19/2025-0419-large-scale-rdma-anomalies/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&text=experience on cilium bandwidth manager"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&is_video=false&description=experience on cilium bandwidth manager"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=experience on cilium bandwidth manager&body=Check out this article: https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&name=experience on cilium bandwidth manager&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&t=experience on cilium bandwidth manager"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-cilium-bandwidth-manager-introduction"><span class="toc-number">1.</span> <span class="toc-text">0. cilium bandwidth manager introduction</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-Issues"><span class="toc-number">2.</span> <span class="toc-text">1. Issues</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-in-host-bufferbloat-issue"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 in-host bufferbloat issue</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-lack-of-UDP-backpressure"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 lack of UDP backpressure</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-solutions"><span class="toc-number">3.</span> <span class="toc-text">2. solutions</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-convert-bufferbloat"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 convert bufferbloat</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-1-codel"><span class="toc-number">3.1.1.</span> <span class="toc-text">2.1.1 codel</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-2-RED"><span class="toc-number">3.1.2.</span> <span class="toc-text">2.1.2 RED</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-3-ECN"><span class="toc-number">3.1.3.</span> <span class="toc-text">2.1.3 ECN</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-4-CWR"><span class="toc-number">3.1.4.</span> <span class="toc-text">2.1.4 CWR</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-token-bucket-filter-policing"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 token bucket filter(policing)</span></a></li></ol></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        experience on cilium bandwidth manager
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-04-21T13:55:59.000Z" class="dt-published" itemprop="datePublished">2025-04-21</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/cilium/" rel="tag">cilium</a>, <a class="p-category" href="/tags/network/" rel="tag">network</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>bandwidth management is hard, because it involves remote resources.</p>
+<p>Typically, for bandwidth mangement, we talk about egress traffic shaping, ingress as traffic policing. We refer them in this way because, the sender is the one which has control. Sender can control or shape the traffic when it goes out of the host(or qdisc).</p>
+<p>But for the receiver, it can have feedback to sender, but longer and slower. And when receiver is conducting any action to prevent any impact, it’s already too late and impact has been caused(e.g. softirq has been triggered, some efforts has been spent, we are just stop bleeding in this case).</p>
+<h2 id="0-cilium-bandwidth-manager-introduction"><a href="#0-cilium-bandwidth-manager-introduction" class="headerlink" title="0. cilium bandwidth manager introduction"></a>0. cilium bandwidth manager introduction</h2><p>cilium banwdidth manager is only handling the egress rate limit part.</p>
+<p><img src="/../figures/image-20250422004132330.png" alt="image-20250422004132330"></p>
+<p>As introduced in <a target="_blank" rel="noopener" href="https://isovalent.com/blog/post/addressing-bandwidth-exhaustion-with-cilium-bandwidth-manager/">https://isovalent.com/blog/post/addressing-bandwidth-exhaustion-with-cilium-bandwidth-manager/</a></p>
+<p>It basically adopt clsact BPF to implement a EDT way to achieve pacing &amp; rate limit.</p>
+<p>for EDT, we can refer to </p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=MAni0_lN7zE">Teach NIC about Timestamps</a></li>
+<li><a target="_blank" rel="noopener" href="https://dl.acm.org/doi/10.1145/3098822.3098852">Carousel</a></li>
+</ul>
+<h2 id="1-Issues"><a href="#1-Issues" class="headerlink" title="1. Issues"></a>1. Issues</h2><h3 id="1-1-in-host-bufferbloat-issue"><a href="#1-1-in-host-bufferbloat-issue" class="headerlink" title="1.1 in-host bufferbloat issue"></a>1.1 in-host bufferbloat issue</h3><p>Toke has a excellent post <a target="_blank" rel="noopener" href="https://blog.tohojo.dk/2023/12/the-big-fifo-in-the-cloud.html">The Big FIFO in the Cloud</a> about this issue, we just borrowed some pics here to describe the bufferbloat here.</p>
+<p>In short, latencies increases a lot with #connections increase, typically bufferbloat issue.</p>
+<p><img src="https://blog.tohojo.dk/media/ebpf-traffic-shaping-comparison.png" alt="tests"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">These tests show the results of running the RRUL test inside a container with the Cilium bandwidth manager enabled, and either the fq or fq_codel qdiscs installed on the host-side physical interface. The &#x27;BE&#x27;, &#x27;BK&#x27;, &#x27;CS5&#x27; and &#x27;EF&#x27; labels refer to different DiffServ markings that the test applies to each flow. However, nothing in this test reacts to those markings, so it&#x27;s safe to just ignore them.</span><br></pre></td></tr></table></figure>
+
+
+
+<p><img src="https://blog.tohojo.dk/media/fifo-vs-edt-queueing.svg" alt="EDTvsFIFO"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">In a regular FIFO, packets are queued one after the other and go out at line rate. With EDT, each packet has a timestamp that it will be dequeued at. One can think of this as the packets having &#x27;space&#x27; between them, which can be used to achieve a particular shaping rate. In this example, packets are queued with 1 ms of delay from between them.</span><br></pre></td></tr></table></figure>
+
+<p><img src="https://blog.tohojo.dk/media/fq-edt-queueing.svg" alt="EDTqueuingMutliflow"></p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Even if packets are enqueued in multiple per-flow queues, because of the global timestamp assignment, we will end up with a virtual FIFO queue across all packets coming out of the same pod.</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="1-2-lack-of-UDP-backpressure"><a href="#1-2-lack-of-UDP-backpressure" class="headerlink" title="1.2 lack of UDP backpressure"></a>1.2 lack of UDP backpressure</h3><p>We set rate limit for 100Mbps limit for one pod, and if we run udp iperf with rate &lt; 100Mbps(may 90Mbps), we should see no anomalties.</p>
+<p>e.g. we have rate limit for 100Mbps, then we run iperf of 200M, we will see is very low, about 2Mbps.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"># iperf --udp --client 10.19.1.46 --bandwidth 200M --enhancedreports</span><br><span class="line">[  3]  0.0-12.0 sec  3.81 MBytes  2.66 Mbits/sec   0.077 ms 175618/178334 (98%)</span><br><span class="line">[  3] 0.0000-11.9995 sec  1 datagrams received out-of-order</span><br></pre></td></tr></table></figure>
+
+<p>e.g. we have rate limit of 10Mbps of one pod, if we run iperf with 10M specified, the throughput goes below 10Mbps, however, what we saw is its throughput is below 10Mbps.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"># iperf3 -c &lt;server-ip&gt; -b 10M -u</span><br><span class="line">[ ID] Interval           Transfer     Bitrate         Jitter    Lost/Total Datagrams</span><br><span class="line">[  5]   0.00-10.00  sec  11.9 MBytes  10.0 Mbits/sec  0.000 ms  0/8633 (0%)  sender</span><br><span class="line">[  5]   0.00-10.00  sec  9.10 MBytes  7.63 Mbits/sec  0.304 ms  1786/8376 (21%)  receiver</span><br></pre></td></tr></table></figure>
+
+<p>This is due to TCP has TSQ(TCP small queue), mechanism, throttling the in-host number of bytes of a connection.</p>
+<p>If we check the tc -s qdisc show, we will find that packets are dropped by the tc-fq</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">$ sudo tc -s qdisc show dev ens4</span><br><span class="line">qdisc mq 8002: root</span><br><span class="line"> Sent 783370773 bytes 1006231 pkt (dropped 584, overlimits 0 requeues 0)</span><br><span class="line"> backlog 0b 0p requeues 0</span><br><span class="line">qdisc fq 0: parent 8002:8 limit 10000p flow_limit 100p buckets 1024 orphan_mask 1023 quantum 2948b initial_quantum 14740b low_rate_threshold 550Kbit refill_delay 40ms timer_slack 10us horizon 10s horizon_drop</span><br><span class="line"> Sent 171368969 bytes 176640 pkt (dropped 104, overlimits 0 requeues 0)</span><br><span class="line"> backlog 0b 0p requeues 0</span><br></pre></td></tr></table></figure>
+
+<p>because UDP packets are queued at tc-fq, not allowed to send until the <code>skb-&gt;tstamp</code>,  but each fq has a param called <code>flow_limit</code>, which identifies the queue length of one flow in tc-fq. So when more than 100 packets of the same flow are waiting in the tc-fq, excessive packets will be dropped.</p>
+<p>About 10Mbps UDP case, it is due to the disturbance and variance introduced by kernel network stack or some noise of timers. Dequeue rate of tc-fq and enqueue rate of iperf, both are not accurate, this cause some queuing in tc-fq. When queue is longer than tc-fq flow limit, it causes packet drop still.</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">My guess would be that this is due to a difference in what iperf</span><br><span class="line">considers to be 10Mbit/s and what the shapes does. Running a quick test</span><br><span class="line">on my own machine, when sending at 10Mbit/s iperf sleeps somewhere</span><br><span class="line">between 960 and 985 usecs between each frame. Whereas the interpacket</span><br><span class="line">gap between 1500-byte frames is 1200 usecs (1500*8/10000000), or 1227</span><br><span class="line">(1534*8/10000000) usecs if you account for the ethernet framing.</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="2-solutions"><a href="#2-solutions" class="headerlink" title="2. solutions"></a>2. solutions</h2><h3 id="2-1-convert-bufferbloat"><a href="#2-1-convert-bufferbloat" class="headerlink" title="2.1 convert bufferbloat"></a>2.1 convert bufferbloat</h3><p>bufferbloat has been investigated since start of the this centry, many methods has been proposed to tackle this issue, including ECN, RED, Codel.</p>
+<h4 id="2-1-1-codel"><a href="#2-1-1-codel" class="headerlink" title="2.1.1 codel"></a>2.1.1 codel</h4><p>codel is to overcome bufferbloat issues by differentiating burst and congestion, however, as we use tc clsact ingress BPF hook, BPF program can only impact the enqueue behavior, codel needs the queuing delay info for each packet, which we can obtain in egress dequeue point, not supported currently. <a target="_blank" rel="noopener" href="https://lpc.events/event/7/contributions/679/attachments/520/1188/sch_bpf.pdf">BPF qdisc</a> is currently being submitted to upstream, but looks like it has gone through a long discussion but not merged yet.</p>
+<p>more about codel can be referred to  <a target="_blank" rel="noopener" href="https://en.wikipedia.org/wiki/CoDel">Wiki page</a> or <a target="_blank" rel="noopener" href="https://queue.acm.org/detail.cfm?id=2209336">codel paper</a></p>
+<h4 id="2-1-2-RED"><a href="#2-1-2-RED" class="headerlink" title="2.1.2 RED"></a>2.1.2 RED</h4><p>Random early detection (RED), also known as random early discard or random early drop, compared to tail drop, RED will drop packets based on a probabilities, longer queue length means severe congestion, then we should drop it.</p>
+<h4 id="2-1-3-ECN"><a href="#2-1-3-ECN" class="headerlink" title="2.1.3 ECN"></a>2.1.3 ECN</h4><p>The idea for this ECN &amp; CWR methods mainly come from <a target="_blank" rel="noopener" href="https://www.youtube.com/watch?v=wIWpqkdGrEM">LPC talk of Lawrance Brakmo</a></p>
+<p>in BPF, we have bpf helper function to set ECN for packets. it helps to rate limit bulk elemphant flow. Mice flow packets are less likely to be ECN-marked. And it’s not dropping packets, we got more goodput compared to RED. </p>
+<p>But enabling ECN in Datacenter networks is not an easy effort, some traditional protocol treated ECN marking as packet loss. they are unable to differentiate loss due to buffer occupancy high or traffic burst loss. DCTCP exploits the ECN marking better, but enabling DCTCP is also very challenging mixing ECN &amp; non-ECN connections can cause unfairness.</p>
+<blockquote>
+<p>Meta has shared their experience in deploying DCTCP with ECN in datacenters, aimed to reduce the queue length in ToR switch. Meanwhile they enabled ECN for in-cluster traffic, However, they encountered many challenges like</p>
+<ul>
+<li>differentiating in-cluster traffic &amp; cross-cluster traffic(cross-cluster switch behavior are out of control), Meta uses sockops bpf prog to differentiate them, and they have runtime patching for the existing running connections(ECN connections are setup at TCP handshake phase)</li>
+<li>coexistance about CUBIC and DCTCP traffic: select a low droptail threshold for CUBIC, and set a high ECN threshold for DCTCP, this make queue length longer, and CUBIC easier to drop packets, but it solves the main concern: CUBIC burst traffic break DCTCP.</li>
+</ul>
+</blockquote>
+<blockquote>
+<p>high buffer occupancy with bursty Cubic flows will result in very high ECN marks for a competing DCTCP flow, while high buffer occupancy with bursty DCTCP flows will result in very low available buffer for competing Cubic flows.</p>
+</blockquote>
+<h4 id="2-1-4-CWR"><a href="#2-1-4-CWR" class="headerlink" title="2.1.4 CWR"></a>2.1.4 CWR</h4><p>for CWR, it means congestion window reduction phase in TCP state, which the tcp connection gets a congestion event and need to reduce the cwnd then. But compared ECN, CWR control is not as fine-grained as ECN, which means the fairness is not that good.</p>
+<p>If a queue has longer length, we increase the probability we make tcp connection enter CWR.</p>
+<p><img src="/../figures/image-20250422003928471.png" alt="image-20250422003928471"></p>
+<p>From codepath, we have cgroup&#x2F;egress for return a CWR to the source. </p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">ip_finish_output</span><span class="params">(<span class="keyword">struct</span> net *net, <span class="keyword">struct</span> sock *sk, <span class="keyword">struct</span> sk_buff *skb)</span></span><br><span class="line">&#123;</span><br><span class="line">	<span class="type">int</span> ret;</span><br><span class="line"></span><br><span class="line">	ret = BPF_CGROUP_RUN_PROG_INET_EGRESS(sk, skb);</span><br><span class="line">	<span class="keyword">switch</span> (ret) &#123;</span><br><span class="line">	<span class="keyword">case</span> NET_XMIT_SUCCESS:</span><br><span class="line">		<span class="keyword">return</span> __ip_finish_output(net, sk, skb);</span><br><span class="line">	<span class="keyword">case</span> NET_XMIT_CN:</span><br><span class="line">		<span class="keyword">return</span> __ip_finish_output(net, sk, skb) ? : ret;</span><br><span class="line">	<span class="keyword">default</span>:</span><br><span class="line">		kfree_skb_reason(skb, SKB_DROP_REASON_BPF_CGROUP_EGRESS);</span><br><span class="line">		<span class="keyword">return</span> ret;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>From the codepath ip_finish_output -&gt; ip_finish_output2 -&gt; neigh_output -&gt; neigh_hh_output -&gt; dev_queue_xmit </p>
+<p>However, as cilium bandwidth manager uses clsact hook, it calls the sch_handle_egress to call the BPF program, then we can drop the packet, but in <code>sch_handle_egress</code>, we cannot set rc(return code) to NET_XMIT_CN. we can either modify the kernel logics here or modify sch_fq module to return NET_XMIT_CN, to tell socket there is congestion in the host.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">int</span> __dev_queue_xmit(<span class="keyword">struct</span> sk_buff *skb, <span class="keyword">struct</span> net_device *sb_dev)</span><br><span class="line">&#123;</span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line">	tcx_set_ingress(skb, <span class="literal">false</span>);</span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line">		skb = sch_handle_egress(skb, &amp;rc, dev);</span><br><span class="line">		<span class="keyword">if</span> (!skb)</span><br><span class="line">			<span class="keyword">goto</span> out;</span><br><span class="line"><span class="comment">// ...</span></span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h3 id="2-2-token-bucket-filter-policing"><a href="#2-2-token-bucket-filter-policing" class="headerlink" title="2.2 token bucket filter(policing)"></a>2.2 token bucket filter(policing)</h3><p>previously, BPF are hard to implement a token bucket filter, because lack the spin-lock semantics as mentioned in <a target="_blank" rel="noopener" href="https://lpc.events/event/2/contributions/121/attachments/84/95/LPC2018-TokenBucket_v4.pdf">LPC talk</a>.</p>
+<p>now we have <code>bpf_spin_lock</code> helper function, which make it easier to get it done. </p>
+<p>For rate limit, token bucket filter can effectively avoid burst &amp; incast issues, it’s just not pacing and not that accurate.</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment">// Begin critical section</span></span><br><span class="line">bpf_spin_lock(&amp;qdp-&gt;lock);</span><br><span class="line">delta = qdp-&gt;lasttime - curtime;</span><br><span class="line"><span class="comment">// bound bursts to 100us</span></span><br><span class="line"><span class="keyword">if</span> (delta &lt; -BURST_SIZE_NS) &#123;</span><br><span class="line">	<span class="comment">// negative delta is a credit that allows bursts</span></span><br><span class="line">	qdp-&gt;lasttime = curtime - BURST_SIZE_NS;</span><br><span class="line">	delta = -BURST_SIZE_NS;</span><br><span class="line">&#125;</span><br><span class="line">sendtime = qdp-&gt;lasttime;</span><br><span class="line">delta_send = BYTES_TO_NS(len, qdp-&gt;rate);</span><br><span class="line">__sync_add_and_fetch(&amp;(qdp-&gt;lasttime), delta_send);</span><br><span class="line">bpf_spin_unlock(&amp;qdp-&gt;lock);</span><br><span class="line"><span class="comment">// End critical section</span></span><br></pre></td></tr></table></figure>
+
+
+
+
+
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-cilium-bandwidth-manager-introduction"><span class="toc-number">1.</span> <span class="toc-text">0. cilium bandwidth manager introduction</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-Issues"><span class="toc-number">2.</span> <span class="toc-text">1. Issues</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#1-1-in-host-bufferbloat-issue"><span class="toc-number">2.1.</span> <span class="toc-text">1.1 in-host bufferbloat issue</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#1-2-lack-of-UDP-backpressure"><span class="toc-number">2.2.</span> <span class="toc-text">1.2 lack of UDP backpressure</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-solutions"><span class="toc-number">3.</span> <span class="toc-text">2. solutions</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-convert-bufferbloat"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 convert bufferbloat</span></a><ol class="toc-child"><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-1-codel"><span class="toc-number">3.1.1.</span> <span class="toc-text">2.1.1 codel</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-2-RED"><span class="toc-number">3.1.2.</span> <span class="toc-text">2.1.2 RED</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-3-ECN"><span class="toc-number">3.1.3.</span> <span class="toc-text">2.1.3 ECN</span></a></li><li class="toc-item toc-level-4"><a class="toc-link" href="#2-1-4-CWR"><span class="toc-number">3.1.4.</span> <span class="toc-text">2.1.4 CWR</span></a></li></ol></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-token-bucket-filter-policing"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 token bucket filter(policing)</span></a></li></ol></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&text=experience on cilium bandwidth manager"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&is_video=false&description=experience on cilium bandwidth manager"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=experience on cilium bandwidth manager&body=Check out this article: https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&title=experience on cilium bandwidth manager"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&name=experience on cilium bandwidth manager&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/04/21/2025-0421-bpf-bandwidth-limit-experience/&t=experience on cilium bandwidth manager"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
