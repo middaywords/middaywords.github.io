@@ -8,14 +8,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
     <meta name="description" content="《TCP CC: a systems approach》notes 1: introductoinLink: https:&#x2F;&#x2F;tcpcc.systemsapproach.org&#x2F;index.html  概括总结 by kimi 我不记得在哪里发现了这本书，我也没有系统学习过CC，假期比较闲散无聊，就比较感兴趣读了下这本书。是 TCP vegas 的几位作者写的，读起来发现写的很好，解决了我以前接触">
 <meta property="og:type" content="article">
-<meta property="og:title" content="《TCP CC - a systems approach》notes (1) - introductoin">
+<meta property="og:title" content="(译)《TCP CC - a systems approach》notes (1) - introductoin">
 <meta property="og:url" content="https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/index.html">
 <meta property="og:site_name" content="Kangjie&#39;s Homepage">
 <meta property="og:description" content="《TCP CC: a systems approach》notes 1: introductoinLink: https:&#x2F;&#x2F;tcpcc.systemsapproach.org&#x2F;index.html  概括总结 by kimi 我不记得在哪里发现了这本书，我也没有系统学习过CC，假期比较闲散无聊，就比较感兴趣读了下这本书。是 TCP vegas 的几位作者写的，读起来发现写的很好，解决了我以前接触">
 <meta property="og:locale" content="en_US">
 <meta property="og:image" content="https://tcpcc.systemsapproach.org/_images/Slide1.png">
 <meta property="article:published_time" content="2024-05-02T10:20:38.000Z">
-<meta property="article:modified_time" content="2024-09-15T14:36:43.693Z">
+<meta property="article:modified_time" content="2025-04-24T15:02:01.253Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="network">
 <meta name="twitter:card" content="summary">
@@ -39,7 +39,7 @@
       
     
     <!-- title -->
-    <title>《TCP CC - a systems approach》notes (1) - introductoin</title>
+    <title>(译)《TCP CC - a systems approach》notes (1) - introductoin</title>
     <!-- async scripts -->
     <!-- Google Analytics -->
 
@@ -111,16 +111,16 @@
     <div id="share" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&text=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&is_video=false&description=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=《TCP CC - a systems approach》notes (1) - introductoin&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&name=《TCP CC - a systems approach》notes (1) - introductoin&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&t=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&text=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&is_video=false&description=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=(译)《TCP CC - a systems approach》notes (1) - introductoin&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&name=(译)《TCP CC - a systems approach》notes (1) - introductoin&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&t=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
@@ -140,7 +140,7 @@
   <header>
     
     <h1 class="posttitle p-name" itemprop="name headline">
-        《TCP CC - a systems approach》notes (1) - introductoin
+        (译)《TCP CC - a systems approach》notes (1) - introductoin
     </h1>
 
 
@@ -244,16 +244,16 @@
     <div id="share-footer" style="display: none">
       <ul>
   <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&text=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&is_video=false&description=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" href="mailto:?subject=《TCP CC - a systems approach》notes (1) - introductoin&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&name=《TCP CC - a systems approach》notes (1) - introductoin&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
-  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&t=《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&text=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&is_video=false&description=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=(译)《TCP CC - a systems approach》notes (1) - introductoin&body=Check out this article: https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&title=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&name=(译)《TCP CC - a systems approach》notes (1) - introductoin&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2024/05/02/2024-0502-tcp-cc-1/&t=(译)《TCP CC - a systems approach》notes (1) - introductoin"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
 </ul>
 
     </div>
