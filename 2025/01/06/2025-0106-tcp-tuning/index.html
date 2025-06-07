@@ -14,7 +14,7 @@
 <meta property="og:description" content="1234567891011121314151617181920212223root@tess-node-6xlzc-tess11:&#x2F;sysroot&#x2F;home&#x2F;tess-admin# ls &#x2F;proc&#x2F;sys&#x2F;net&#x2F;ipv4&#x2F;tcp_tcp_abort_on_overflow               tcp_fastopen                        tcp_moderat">
 <meta property="og:locale" content="en_US">
 <meta property="article:published_time" content="2025-01-06T08:21:54.000Z">
-<meta property="article:modified_time" content="2025-01-06T08:29:16.354Z">
+<meta property="article:modified_time" content="2025-06-07T11:15:41.479Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="network">
 <meta property="article:tag" content="tcp">
@@ -170,6 +170,100 @@
   <div class="content e-content" itemprop="articleBody">
     <figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br></pre></td><td class="code"><pre><span class="line">root@tess-node-6xlzc-tess11:/sysroot/home/tess-admin<span class="comment"># ls /proc/sys/net/ipv4/tcp_</span></span><br><span class="line">tcp_abort_on_overflow               tcp_fastopen                        tcp_moderate_rcvbuf                 tcp_retries2</span><br><span class="line">tcp_adv_win_scale                   tcp_fastopen_blackhole_timeout_sec  tcp_mtu_probe_floor                 tcp_rfc1337</span><br><span class="line">tcp_allowed_congestion_control      tcp_fastopen_key                    tcp_mtu_probing                     tcp_rmem</span><br><span class="line">tcp_app_win                         tcp_fin_timeout                     tcp_no_metrics_save                 tcp_sack</span><br><span class="line">tcp_autocorking                     tcp_frto                            tcp_no_ssthresh_metrics_save        tcp_shrink_window</span><br><span class="line">tcp_available_congestion_control    tcp_fwmark_accept                   tcp_notsent_lowat                   tcp_slow_start_after_idle</span><br><span class="line">tcp_available_ulp                   tcp_invalid_ratelimit               tcp_orphan_retries                  tcp_stdurg</span><br><span class="line">tcp_backlog_ack_defer               tcp_keepalive_intvl                 tcp_pacing_ca_ratio                 tcp_syn_linear_timeouts</span><br><span class="line">tcp_base_mss                        tcp_keepalive_probes                tcp_pacing_ss_ratio                 tcp_syn_retries</span><br><span class="line">tcp_challenge_ack_limit             tcp_keepalive_time                  tcp_pingpong_thresh                 tcp_synack_retries</span><br><span class="line">tcp_child_ehash_entries             tcp_l3mdev_accept                   tcp_plb_cong_thresh                 tcp_syncookies</span><br><span class="line">tcp_comp_sack_delay_ns              tcp_limit_output_bytes              tcp_plb_enabled                     tcp_thin_linear_timeouts</span><br><span class="line">tcp_comp_sack_nr                    tcp_low_latency                     tcp_plb_idle_rehash_rounds          tcp_timestamps</span><br><span class="line">tcp_comp_sack_slack_ns              tcp_max_orphans                     tcp_plb_rehash_rounds               tcp_tso_rtt_log</span><br><span class="line">tcp_congestion_control              tcp_max_reordering                  tcp_plb_suspend_rto_sec             tcp_tso_win_divisor</span><br><span class="line">tcp_dsack                           tcp_max_syn_backlog                 tcp_probe_interval                  tcp_tw_reuse</span><br><span class="line">tcp_early_demux                     tcp_max_tw_buckets                  tcp_probe_threshold                 tcp_window_scaling</span><br><span class="line">tcp_early_retrans                   tcp_mem                             tcp_recovery                        tcp_wmem</span><br><span class="line">tcp_ecn                             tcp_migrate_req                     tcp_reflect_tos                     tcp_workaround_signed_windows</span><br><span class="line">tcp_ecn_fallback                    tcp_min_rtt_wlen                    tcp_reordering                      </span><br><span class="line">tcp_ehash_entries                   tcp_min_snd_mss                     tcp_retrans_collapse                </span><br><span class="line">tcp_fack                            tcp_min_tso_segs                    tcp_retries1    </span><br></pre></td></tr></table></figure>
 
+
+
+<table>
+<thead>
+<tr>
+<th>param</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>tcp_abort_on_overflow</td>
+<td>If listening service is too slow to accept new connections, reset them. Default state is FALSE. It means that if overflow occurred due to a burst, connection will recover. Enable this option <em>only</em> if you are really sure that listening daemon cannot be tuned to accept connections faster. Enabling this option can harm clients of your server.</td>
+</tr>
+<tr>
+<td>tcp_adv_win_scale</td>
+<td>used to account for the overhead needed by Linux to process packets. The receive window is specified in terms of user payload bytes. Linux needs additional memory beyond that to track other data associated with packets it is processing. can refer the details in <a target="_blank" rel="noopener" href="https://blog.cloudflare.com/optimizing-tcp-for-high-throughput-and-low-latency/">https://blog.cloudflare.com/optimizing-tcp-for-high-throughput-and-low-latency/</a></td>
+</tr>
+<tr>
+<td>tcp_app_win</td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+</tbody></table>
 
   </div>
 </article>

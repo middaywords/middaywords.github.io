@@ -19,7 +19,7 @@
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20250607180842736.png">
 <meta property="og:image" content="https://middaywords.github.io/figures/image-20250607182915490.png">
 <meta property="article:published_time" content="2025-06-07T08:49:22.000Z">
-<meta property="article:modified_time" content="2025-06-07T11:06:11.198Z">
+<meta property="article:modified_time" content="2025-06-07T11:25:58.899Z">
 <meta property="article:author" content="Kangjie Xu">
 <meta property="article:tag" content="network">
 <meta name="twitter:card" content="summary">
@@ -239,11 +239,11 @@
 <li>ni 是独立同分布的，和 Yi， Ai 无关</li>
 </ol>
 <p>这里我们再引入两个变量，</p>
-<p>一个是 Mi，表示一轮 timeout（TOi） 周期中，发送的包的数量（Ri 表示是第 i 轮 Timeout 周期中的重传数量，之前有推导，期望为 <code>1/(1-p)</code> ）<br>$$<br>Mi &#x3D; \sum_{j&#x3D;1}^{ni} Yij + Ri<br>$$<br>一个是 Si，表示一轮 TOi 持续的时间，Zi 表示由于 timeout 重传导致的额外时间<br>$$<br>Si &#x3D; \sum_{j&#x3D;1}^{ni} Aij + Z_i^{TO}<br>$$<br>由此我们进一步计算其期望<br>$$<br>E[M]&#x3D;E[n]E[Y]+E[R] \\<br>E[S]&#x3D;E[n]E[A]+E[Z^{TO}]<br>$$<br>那么我们则可以知道发送速率 B 为<br>$$<br>B&#x3D;\frac{E[M]}{E[S]}&#x3D;\frac{E[n]E[Y]+E[R]}{E[n]E[A]+E[Z^{TO}]} &#x3D; \frac{E[Y]+Q<em>E[R]}{E[A]+Q</em>E[Z^{TO}]}<br>$$<br>其中未知的还有 E[Z^TO] 和 Q。</p>
+<p>一个是 Mi，表示一轮 timeout（TOi） 周期中，发送的包的数量（Ri 表示是第 i 轮 Timeout 周期中的重传数量，之前有推导，期望为 <code>1/(1-p)</code> ）<br>$$<br>Mi &#x3D; \sum_{j&#x3D;1}^{ni} Yij + Ri<br>$$<br>一个是 Si，表示一轮 TOi 持续的时间，Zi 表示由于 timeout 重传导致的额外时间<br>$$<br>Si &#x3D; \sum_{j&#x3D;1}^{ni} Aij + Z_i^{TO}<br>$$<br>由此我们进一步计算其期望<br>$$<br>E[M]&#x3D;E[n]E[Y]+E[R] \\<br>E[S]&#x3D;E[n]E[A]+E[Z^{TO}]<br>$$<br>那么我们则可以知道发送速率 B 为<br>$$<br>\begin{aligned}<br>B&amp;&#x3D;\frac{E[M]}{E[S]} \\<br>&amp;&#x3D;\frac{E[n]E[Y]+E[R]}{E[n]E[A]+E[Z^{TO}]} \\<br>&amp;&#x3D; \frac{E[Y]+Q<em>E[R]}{E[A]+Q</em>E[Z^{TO}]}<br>\end{aligned}<br>$$<br>其中未知的还有 E[Z^TO] 和 Q。</p>
 <p>其中 Q 是 give loss 不是由 TD 引起，而是 TO 引起的概率<br>$$<br>Q\triangleq\frac1{E[n]}<br>$$<br>Q 就是两次 ack 的概率，这里不推了，结论是<br>$$<br>Q\simeq\widehat{Q}(E[W])\simeq\min(1,\frac{3}{E[W]})\simeq\min(1,3\sqrt{\frac{3bp}{8}})<br>$$</p>
 <hr>
 <h3 id="3-3-多个-TO-周期"><a href="#3-3-多个-TO-周期" class="headerlink" title="3.3 多个 TO 周期"></a>3.3 多个 TO 周期</h3><p>我们继续考虑多个TO周期的情形，</p>
-<p>比如由于 TO 发生而丢了 R&#x3D;k 个包<br>$$<br>P[R&#x3D;k]&#x3D;p^{k-1}(1-p)\quad\mathrm{<del>for</del>}k&#x3D;1,2,…<br>$$<br>由于 timeout 会按指数增加<br>$$<br>L_k&#x3D;(2^k-1)T_O\quad<br>$$<br>那么可以算出  E(Z^TO)<br>$$<br>\begin{aligned}<br> &amp; E[Z^{TO}]&#x3D;T_O\frac{1+p+2p^2+4p^3+8p^4+16p^5+32p^6}{1-p} \<br> &amp; \triangleq T_O\frac{f(p)}{1-p}\simeq T_0(1+32p^2)<br>\end{aligned}<br>$$<br>现在我们有了 Q 和 E(Z^TO)， 可以算出 19 中的 B 了<br>$$<br>\begin{gathered}<br>B(p)&#x3D;\frac{\frac{1-p}{p}+E[W]+\widehat{Q}(E[W])\frac{1}{1-p}}{RTT(E[X]+1)+\widehat{Q}(E[W])T_O\frac{f(p)}{1-p}} \<br>\simeq\frac{1&#x2F;p}{RTT\left(\sqrt{\frac{2b}{3p}}\right)+\min\left(1,3\sqrt{\frac{3bp}{8}}\right)(1+32p^2)T_0} \<br>&#x3D;\frac{1}{RTT\left(\sqrt{\frac{2bp}{3}}\right)+\min\left(1,3\sqrt{\frac{3bp}{8}}\right)p(1+32p^2)T_0}<br>\end{gathered}<br>$$</p>
+<p>比如由于 TO 发生而丢了 R&#x3D;k 个包<br>$$<br>P[R&#x3D;k]&#x3D;p^{k-1}(1-p)<br>$$<br>由于 timeout 会按指数增加<br>$$<br>L_k&#x3D;(2^k-1)T_O\quad<br>$$<br>那么可以算出  E(Z^TO)<br>$$<br>\begin{aligned}<br> &amp; E[Z^{TO}]&#x3D;T_O\frac{1+p+2p^2+4p^3+8p^4+16p^5+32p^6}{1-p} \\<br> &amp; \triangleq T_O\frac{f(p)}{1-p}\simeq T_0(1+32p^2)<br>\end{aligned}<br>$$<br>现在我们有了 Q 和 E(Z^TO)， 可以算出 19 中的 B 了<br>$$<br>\begin{gathered}<br>B(p)&#x3D;\frac{\frac{1-p}{p}+E[W]+\widehat{Q}(E[W])\frac{1}{1-p}}{RTT(E[X]+1)+\widehat{Q}(E[W])T_O\frac{f(p)}{1-p}} \\<br>\simeq\frac{1&#x2F;p}{RTT\left(\sqrt{\frac{2b}{3p}}\right)+\min\left(1,3\sqrt{\frac{3bp}{8}}\right)(1+32p^2)T_0} \\<br>&#x3D;\frac{1}{RTT\left(\sqrt{\frac{2bp}{3}}\right)+\min\left(1,3\sqrt{\frac{3bp}{8}}\right)p(1+32p^2)T_0}<br>\end{gathered}<br>$$</p>
 <p>最后，其实我们觉着，有些假设还是比较强的，没有考虑 buffer 的作用，RTT 与 Wi 独立不相关。</p>
 
   </div>
