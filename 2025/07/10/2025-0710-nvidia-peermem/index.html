@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang=en>
+<head>
+    <!-- so meta -->
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="HandheldFriendly" content="True">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
+    <meta name="description" content="在RDMA（远程直接内存访问）中，传统上用户空间内存需要通过get_user_pages()获取才能用于RDMA操作。但某些特殊类型的内存（特别是GPU内存）无法通过此方式获取，这限制了RDMA的使用场景。 因此，nvidia 引入了”peer memory interface”（对等内存接口），允许驱动程序向RDMA子系统注册自己能够处理特殊类型的用户虚拟地址范围，这些地址范围与传统的get_u">
+<meta property="og:type" content="article">
+<meta property="og:title" content="rdma 与 nvidia-peermem">
+<meta property="og:url" content="https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/index.html">
+<meta property="og:site_name" content="Kangjie&#39;s Homepage">
+<meta property="og:description" content="在RDMA（远程直接内存访问）中，传统上用户空间内存需要通过get_user_pages()获取才能用于RDMA操作。但某些特殊类型的内存（特别是GPU内存）无法通过此方式获取，这限制了RDMA的使用场景。 因此，nvidia 引入了”peer memory interface”（对等内存接口），允许驱动程序向RDMA子系统注册自己能够处理特殊类型的用户虚拟地址范围，这些地址范围与传统的get_u">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://middaywords.github.io/figures/F30FFB7D-CC60-40F2-A556-029BA6A5F4CB.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/E10E222D-B889-4151-9967-EF871E811189.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/A391A552-6958-4F1A-B47C-D4D8569118AF.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/ECDC24E7-1BAC-49BE-9E3C-F0F485E9CDEF.png">
+<meta property="og:image" content="https://middaywords.github.io/figures/150BA689-1A52-4769-A692-D3FDF99BD66F.png">
+<meta property="article:published_time" content="2025-07-10T02:26:07.000Z">
+<meta property="article:modified_time" content="2025-07-10T03:45:19.705Z">
+<meta property="article:author" content="Kangjie Xu">
+<meta property="article:tag" content="rdma">
+<meta property="article:tag" content="gpu">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://middaywords.github.io/figures/F30FFB7D-CC60-40F2-A556-029BA6A5F4CB.png">
+    
+    
+      
+        
+          <link rel="shortcut icon" href="/images/favicon.ico">
+        
+      
+      
+        
+          <link rel="icon" type="image/png" href="/images/favicon-192x192.png" sizes="192x192">
+        
+      
+      
+        
+          <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon.png">
+        
+      
+    
+    <!-- title -->
+    <title>rdma 与 nvidia-peermem</title>
+    <!-- async scripts -->
+    <!-- Google Analytics -->
+
+
+    <!-- Umami Analytics -->
+
+
+    <!-- styles -->
+    
+<link rel="stylesheet" href="/css/style.css">
+
+    <!-- persian styles -->
+    
+    <!-- rss -->
+    
+    
+	<!-- mathjax -->
+	
+		<script type="text/x-mathjax-config">
+		  MathJax.Hub.Config({
+			tex2jax: {
+			  skipTags: ['script', 'noscript', 'style', 'textarea', 'pre'],
+			  inlineMath: [['$','$']]
+			}
+		  });
+		</script>
+		<script src='https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.5/latest.js?config=TeX-MML-AM_CHTML' async></script>
+	
+<meta name="generator" content="Hexo 6.3.0"></head>
+
+<body class="max-width mx-auto px3 ltr">
+    
+      <div id="header-post">
+  <a id="menu-icon" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="menu-icon-tablet" href="#" aria-label="Menu"><i class="fa-solid fa-bars fa-lg"></i></a>
+  <a id="top-icon-tablet" href="#" aria-label="Top" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');" style="display:none;"><i class="fa-solid fa-chevron-up fa-lg"></i></a>
+  <span id="menu">
+    <span id="nav">
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </span>
+    <br/>
+    <span id="actions">
+      <ul>
+        
+        
+        <li><a class="icon" aria-label="Next post" href="/2025/06/07/2025-0607-tcp-aimd/"><i class="fa-solid fa-chevron-right" aria-hidden="true" onmouseover="$('#i-next').toggle();" onmouseout="$('#i-next').toggle();"></i></a></li>
+        
+        <li><a class="icon" aria-label="Back to top" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up" aria-hidden="true" onmouseover="$('#i-top').toggle();" onmouseout="$('#i-top').toggle();"></i></a></li>
+        <li><a class="icon" aria-label="Share post" href="#"><i class="fa-solid fa-share-alt" aria-hidden="true" onmouseover="$('#i-share').toggle();" onmouseout="$('#i-share').toggle();" onclick="$('#share').toggle();return false;"></i></a></li>
+      </ul>
+      <span id="i-prev" class="info" style="display:none;">Previous post</span>
+      <span id="i-next" class="info" style="display:none;">Next post</span>
+      <span id="i-top" class="info" style="display:none;">Back to top</span>
+      <span id="i-share" class="info" style="display:none;">Share post</span>
+    </span>
+    <br/>
+    <div id="share" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/"><i class="fab fa-facebook " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&text=rdma 与 nvidia-peermem"><i class="fab fa-twitter " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-linkedin " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&is_video=false&description=rdma 与 nvidia-peermem"><i class="fab fa-pinterest " aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rdma 与 nvidia-peermem&body=Check out this article: https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/"><i class="fa-solid fa-envelope " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-get-pocket " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-reddit " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-stumbleupon " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-digg " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&name=rdma 与 nvidia-peermem&description="><i class="fab fa-tumblr " aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&t=rdma 与 nvidia-peermem"><i class="fab fa-hacker-news " aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+    
+    
+      <div id="toc">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-%E6%B5%81%E7%A8%8B"><span class="toc-number">1.</span> <span class="toc-text">0. 流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">2.</span> <span class="toc-text">1. 初始化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%86%85%E5%AD%98%E6%B3%A8%E5%86%8C"><span class="toc-number">3.</span> <span class="toc-text">2. 内存注册</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-get-pages"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 get pages</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-dma-map-pages"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 dma map pages</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-nv-get-p2p-free-callback-%E5%86%85%E5%AD%98%E5%9B%9E%E6%94%B6"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 nv_get_p2p_free_callback 内存回收</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#other"><span class="toc-number">4.</span> <span class="toc-text">other</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">5.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+  </span>
+</div>
+
+    
+    <div class="content index py4 ">
+        
+        <article class="post h-entry" itemscope itemtype="http://schema.org/BlogPosting">
+  <header>
+    
+    <h1 class="posttitle p-name" itemprop="name headline">
+        rdma 与 nvidia-peermem
+    </h1>
+
+
+
+    <div class="meta">
+      <span class="author p-author h-card" itemprop="author" itemscope itemtype="http://schema.org/Person">
+        <span class="p-name" itemprop="name">Kangjie Xu</span>
+      </span>
+      
+    <div class="postdate">
+      
+        <time datetime="2025-07-10T02:26:07.000Z" class="dt-published" itemprop="datePublished">2025-07-10</time>
+        
+      
+    </div>
+
+
+      
+
+      
+    <div class="article-tag">
+        <i class="fa-solid fa-tag"></i>
+        <a class="p-category" href="/tags/gpu/" rel="tag">gpu</a>, <a class="p-category" href="/tags/rdma/" rel="tag">rdma</a>
+    </div>
+
+
+    </div>
+  </header>
+  
+
+  <div class="content e-content" itemprop="articleBody">
+    <p>在RDMA（远程直接内存访问）中，传统上用户空间内存需要通过<code>get_user_pages()</code>获取才能用于RDMA操作。但某些特殊类型的内存（特别是GPU内存）无法通过此方式获取，这限制了RDMA的使用场景。</p>
+<p>因此，nvidia 引入了”peer memory interface”（对等内存接口），允许驱动程序向RDMA子系统注册自己能够处理特殊类型的用户虚拟地址范围，这些地址范围与传统的<code>get_user_pages()</code>不兼容。例如：</p>
+<ul>
+<li>通过<code>io_remap_pfn_range()</code>创建的虚拟内存区域(VMA)</li>
+<li>其他驱动程序特殊的VMA（如GPU内存）</li>
+</ul>
+<p>这篇博客，我们解析 peer memory interface 在 nvidia-peermem 的实现与交互流程。</p>
+<p>Nvidia-peermem 相关实现之前是 mellanox 版本</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/Mellanox/nv_peer_memory">https://github.com/Mellanox/nv_peer_memory</a></li>
+</ul>
+<p>再后来 nvidia 开源了 open gpu kernel module，nvidia-peermem 放在这个 repo 了。</p>
+<ul>
+<li><a target="_blank" rel="noopener" href="https://github.com/NVIDIA/open-gpu-kernel-modules/tree/main/kernel-open/nvidia-peermem">https://github.com/NVIDIA/open-gpu-kernel-modules/tree/main/kernel-open/nvidia-peermem</a></li>
+</ul>
+<h2 id="0-流程"><a href="#0-流程" class="headerlink" title="0. 流程"></a>0. 流程</h2><p>大致流程分为三个阶段：</p>
+<ul>
+<li>初始化<ul>
+<li>初始化一些 struct peer_memory_client_ex nv_mem_client_ex 的字段，这个数据结构实现了一些 peer_memory_client 的接口</li>
+<li>NVIDIA peer memory 驱动通过 ib_register_peer_memory_client() 向 IB peer memory 模块注册自己<ul>
+<li>传递 peer memory client 结构体，包含各种回调函数 (acquire, get_pages, dma_map 等)</li>
+<li>IB peer memory 模块返回 reg_handle 并传递 mem_invalidate_callback 函数指针</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>内存注册过程<ul>
+<li><strong>触发流程</strong>:<ul>
+<li>用户程序调用 <code>ibv_reg_mr()</code> 注册内存区域</li>
+<li>RDMA 用户空间库调用内核 <code>ib_umem_get()</code></li>
+<li>内核尝试使用 <code>get_user_pages()</code> 获取普通内存页面</li>
+<li>如果是特殊内存（如 GPU 内存），普通获取方式失败</li>
+</ul>
+</li>
+<li><strong>Peer 内存识别</strong>:<ul>
+<li>IB Core 调用 <code>ib_peer_umem_get()</code></li>
+<li>遍历所有注册的 peer clients 寻找可以处理该内存区域的驱动</li>
+<li>调用每个客户端的 <code>acquire()</code> 函数，尝试认领内存区域</li>
+<li>NVIDIA 驱动检查地址是否属于 GPU 内存，返回 1 表示认领</li>
+</ul>
+</li>
+<li><strong>内存映射流程</strong>:<ul>
+<li>IB Peer Memory 调用 NVIDIA 驱动的 <code>get_pages()</code> -&gt; <code>nvidia_p2p_get_pages()</code> 获取页表</li>
+<li>调用 <code>dma_map()</code> -&gt; <code>nvidia_p2p_dma_map_pages()</code> 创建 DMA 映射</li>
+<li>返回填充好的 sg_table 给 RDMA 子系统</li>
+</ul>
+</li>
+</ul>
+</li>
+<li>释放阶段<ul>
+<li><strong>用户触发释放</strong>:<ul>
+<li>用户程序调用 <code>ibv_dereg_mr()</code></li>
+<li>最终调用到 <code>ib_peer_umem_release()</code></li>
+</ul>
+</li>
+<li><strong>资源清理</strong>:<ul>
+<li>停止失效通知</li>
+<li>解除 DMA 映射 -&gt; <code>nvidia_p2p_dma_unmap_pages()</code></li>
+<li>释放页面 -&gt; <code>nvidia_p2p_put_pages()</code></li>
+<li>调用 <code>release()</code> 释放上下文</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<p><img src="/../figures/F30FFB7D-CC60-40F2-A556-029BA6A5F4CB.png" alt="F30FFB7D-CC60-40F2-A556-029BA6A5F4CB"></p>
+<p><img src="/../figures/E10E222D-B889-4151-9967-EF871E811189.png" alt="E10E222D-B889-4151-9967-EF871E811189"></p>
+<h2 id="1-初始化"><a href="#1-初始化" class="headerlink" title="1. 初始化"></a>1. 初始化</h2><p><code>struct peer_memory_client</code> 是定义的外部驱动与 ib 模块交互的接口：</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">peer_memory_client_ex</span> <span class="title">nv_mem_client_ex</span> =</span> &#123; .client = &#123;</span><br><span class="line">    .acquire        = nv_mem_acquire,</span><br><span class="line">    .get_pages  = nv_mem_get_pages,</span><br><span class="line">    .dma_map    = nv_dma_map,</span><br><span class="line">    .dma_unmap  = nv_dma_unmap,</span><br><span class="line">    .put_pages  = nv_mem_put_pages,</span><br><span class="line">    .get_page_size  = nv_mem_get_page_size,</span><br><span class="line">    .release        = nv_mem_release,</span><br><span class="line">&#125;&#125;;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="class"><span class="keyword">struct</span> <span class="title">peer_memory_client</span> <span class="title">nv_mem_client_nc</span> =</span> &#123;</span><br><span class="line">    .acquire        = nv_mem_acquire,</span><br><span class="line">    .get_pages      = nv_mem_get_pages_nc,</span><br><span class="line">    .dma_map        = nv_dma_map,</span><br><span class="line">    .dma_unmap      = nv_dma_unmap,</span><br><span class="line">    .put_pages      = nv_mem_put_pages_nc,</span><br><span class="line">    .get_page_size  = nv_mem_get_page_size,</span><br><span class="line">    .release        = nv_mem_release,</span><br><span class="line">&#125;;</span><br></pre></td></tr></table></figure>
+
+<p>persistent 和 legacy API 有如下差异：</p>
+<ul>
+<li>传统API：依赖回调机制处理内存释放，当GPU内存被释放时自动触发回调</li>
+<li>持久API：由用户负责显式释放资源，即使底层GPU内存被释放页表也保持有效</li>
+</ul>
+<p>在初始化的过程中，主要是通过 ib_register_peer_memory_client 向 ib 模块注册当前模块（nvidia）实现的 peer  memory client。</p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">nv_mem_legacy_client_init</span><span class="params">(<span class="type">void</span>)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    reg_handle = ib_register_peer_memory_client(&amp;nv_mem_client_ex.client,</span><br><span class="line">                         &amp;mem_invalidate_callback);</span><br><span class="line">    <span class="keyword">if</span> (!reg_handle) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;nv_mem_client_init -- error while registering traditional client\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h2 id="2-内存注册"><a href="#2-内存注册" class="headerlink" title="2. 内存注册"></a>2. 内存注册</h2><h3 id="2-1-get-pages"><a href="#2-1-get-pages" class="headerlink" title="2.1 get pages"></a>2.1 get pages</h3><p><code>nvidia_p2p_get_pages</code>是 NVIDIA PeerMem 模块中的关键函数，它从 NVIDIA GPU 驱动获取 GPU 内存的物理页表信息。下面详细分析其调用流程：</p>
+<p><img src="/../figures/A391A552-6958-4F1A-B47C-D4D8569118AF.png" alt="A391A552-6958-4F1A-B47C-D4D8569118AF"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">nv_p2p_get_pages</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="type">nv_p2p_page_table_type_t</span> pt_type,</span></span><br><span class="line"><span class="params">    <span class="type">uint64_t</span> p2p_token,</span></span><br><span class="line"><span class="params">    <span class="type">uint32_t</span> va_space,</span></span><br><span class="line"><span class="params">    <span class="type">uint64_t</span> virtual_address,</span></span><br><span class="line"><span class="params">    <span class="type">uint64_t</span> length,</span></span><br><span class="line"><span class="params">    <span class="type">uint8_t</span>  flags,</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> nvidia_p2p_page_table **page_table,</span></span><br><span class="line"><span class="params">    <span class="type">void</span> (*free_callback)(<span class="type">void</span> * data),</span></span><br><span class="line"><span class="params">    <span class="type">void</span> *data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="comment">// 分配资源和初始化</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 根据不同的页表类型调用不同的GPU驱动函数</span></span><br><span class="line">    <span class="keyword">if</span> (pt_type == NV_P2P_PAGE_TABLE_TYPE_PERSISTENT) &#123;</span><br><span class="line">        <span class="comment">// 持久页表API调用</span></span><br><span class="line">        status = rm_p2p_get_pages_persistent(sp, virtual_address, length,</span><br><span class="line">                                           &amp;mem_info-&gt;private,</span><br><span class="line">                                           physical_addresses, &amp;entries,</span><br><span class="line">                                           force_pcie, *page_table, gpu_info,</span><br><span class="line">                                           &amp;mem_info-&gt;mig_info);</span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 传统页表API调用</span></span><br><span class="line">        status = rm_p2p_get_pages(sp, p2p_token, va_space,</span><br><span class="line">                virtual_address, length, physical_addresses, wreqmb_h,</span><br><span class="line">                rreqmb_h, &amp;entries, &amp;gpu_uuid, *page_table);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 处理返回结果，填充页表结构</span></span><br><span class="line">    <span class="comment">// ...</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 注册回调（如果提供了回调函数）</span></span><br><span class="line">    <span class="keyword">if</span> (free_callback != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        mem_info-&gt;free_callback = free_callback;</span><br><span class="line">        mem_info-&gt;data = data;</span><br><span class="line">        </span><br><span class="line">        status = rm_p2p_register_callback(sp, p2p_token, virtual_address, length,</span><br><span class="line">                                       *page_table, nv_p2p_mem_info_free_callback, mem_info);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> nvidia_p2p_map_status(status);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><p><strong>rm_p2p_get_pages()&#x2F;rm_p2p_get_pages_persistent() 函数</strong>：</p>
+<ul>
+<li>这些函数是 NVIDIA GPU 驱动中的内部函数（Resource Manager部分）</li>
+</ul>
+<ul>
+<li><p>函数实现未在开源代码中直接可见</p>
+</li>
+<li><p>它们的主要任务是从 GPU 内存管理系统获取虚拟地址对应的物理页面信息</p>
+</li>
+<li><p>对于给定的虚拟地址范围，返回对应的物理页地址和必要的控制寄存器值</p>
+</li>
+<li><p>可能涉及 GPU MMU（内存管理单元）查询和地址转换操作</p>
+</li>
+</ul>
+</li>
+<li><p><strong>填充页表结构</strong>：</p>
+<ul>
+<li>当从 GPU 驱动获取物理页信息后，函数会填充 <code>nvidia_p2p_page_table</code> 结构</li>
+<li>为每个物理页创建一个 <code>nvidia_p2p_page</code> 结构</li>
+<li>设置物理地址和相关寄存器值</li>
+<li>设置页大小和页数量信息</li>
+</ul>
+</li>
+<li><p><strong>回调注册</strong>：</p>
+<ul>
+<li>如果提供了回调函数，会注册到 GPU 驱动</li>
+</ul>
+<ul>
+<li><p>当 GPU 内存被释放或失效时，这个回调会被触发</p>
+</li>
+<li><p>回调机制确保了资源的正确清理和 InfiniBand 子系统的通知</p>
+</li>
+</ul>
+</li>
+</ul>
+<h3 id="2-2-dma-map-pages"><a href="#2-2-dma-map-pages" class="headerlink" title="2.2 dma map pages"></a>2.2 dma map pages</h3><p><code>nvidia_p2p_dma_map_pages</code>函数用于为第三方设备（如 InfiniBand HCA）创建 GPU 内存的 DMA 映射。</p>
+<p><img src="/../figures/ECDC24E7-1BAC-49BE-9E3C-F0F485E9CDEF.png" alt="ECDC24E7-1BAC-49BE-9E3C-F0F485E9CDEF"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">int</span> <span class="title function_">nv_dma_map</span><span class="params">(<span class="keyword">struct</span> sg_table *sg_head, <span class="type">void</span> *context,</span></span><br><span class="line"><span class="params">                   <span class="keyword">struct</span> device *dma_device, <span class="type">int</span> dmasync,</span></span><br><span class="line"><span class="params">                   <span class="type">int</span> *nmap)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> i, ret;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">scatterlist</span> *<span class="title">sg</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nv_mem_context</span> *<span class="title">nv_mem_context</span> =</span> (<span class="keyword">struct</span> nv_mem_context *) context;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nvidia_p2p_page_table</span> *<span class="title">page_table</span> =</span> nv_mem_context-&gt;page_table;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nvidia_p2p_dma_mapping</span> *<span class="title">dma_mapping</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">pci_dev</span> *<span class="title">pdev</span> =</span> to_pci_dev(dma_device);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 检查页大小</span></span><br><span class="line">    <span class="keyword">if</span> (page_table-&gt;page_size != NVIDIA_P2P_PAGE_SIZE_64KB) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;assumption of 64KB pages failed size_id=%u\n&quot;</span>,</span><br><span class="line">                  nv_mem_context-&gt;page_table-&gt;page_size);</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 验证设备</span></span><br><span class="line">    <span class="keyword">if</span> (!pdev) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;invalid pci_dev\n&quot;</span>);</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 调用NVIDIA P2P接口创建DMA映射</span></span><br><span class="line">    ret = nvidia_p2p_dma_map_pages(pdev, page_table, &amp;dma_mapping);</span><br><span class="line">    <span class="keyword">if</span> (ret) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;error %d while calling nvidia_p2p_dma_map_pages()\n&quot;</span>, ret);</span><br><span class="line">        <span class="keyword">return</span> ret;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 验证版本兼容性</span></span><br><span class="line">    <span class="keyword">if</span> (!NVIDIA_P2P_DMA_MAPPING_VERSION_COMPATIBLE(dma_mapping)) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;incompatible dma mapping version 0x%08x\n&quot;</span>, dma_mapping-&gt;version);</span><br><span class="line">        nvidia_p2p_dma_unmap_pages(pdev, page_table, dma_mapping);</span><br><span class="line">        <span class="keyword">return</span> -EINVAL;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 设置页数</span></span><br><span class="line">    nv_mem_context-&gt;npages = dma_mapping-&gt;entries;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 分配sg_table</span></span><br><span class="line">    ret = sg_alloc_table(sg_head, dma_mapping-&gt;entries, GFP_KERNEL);</span><br><span class="line">    <span class="keyword">if</span> (ret) &#123;</span><br><span class="line">        nvidia_p2p_dma_unmap_pages(pdev, page_table, dma_mapping);</span><br><span class="line">        <span class="keyword">return</span> ret;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 保存DMA映射并填充sg_table</span></span><br><span class="line">    nv_mem_context-&gt;dma_mapping = dma_mapping;</span><br><span class="line">    nv_mem_context-&gt;sg_allocated = <span class="number">1</span>;</span><br><span class="line">    for_each_sg(sg_head-&gt;sgl, sg, nv_mem_context-&gt;npages, i) &#123;</span><br><span class="line">        sg_set_page(sg, <span class="literal">NULL</span>, nv_mem_context-&gt;page_size, <span class="number">0</span>);</span><br><span class="line">        sg_dma_address(sg) = dma_mapping-&gt;dma_addresses[i];</span><br><span class="line">        sg_dma_len(sg) = nv_mem_context-&gt;page_size;</span><br><span class="line">    &#125;</span><br><span class="line">    nv_mem_context-&gt;sg_head = *sg_head;</span><br><span class="line">    *nmap = nv_mem_context-&gt;npages;</span><br><span class="line">    </span><br><span class="line">    <span class="keyword">return</span> <span class="number">0</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<ol>
+<li><strong>nvidia_p2p_dma_map_pages() 函数</strong>： <ul>
+<li>这个函数在 <code>nv-p2p.c</code> 中实现，主要流程：验证参数有效性（页表、设备等）</li>
+<li>分配 DMA 映射结构和地址数组</li>
+<li>准备物理地址数组</li>
+<li>调用 GPU 驱动的 <code>rm_p2p_dma_map_pages()</code> 函数</li>
+<li>填充返回的 DMA 映射结构</li>
+<li>将 DMA 映射添加到内部列表中进行跟踪</li>
+</ul>
+</li>
+<li><strong>rm_p2p_dma_map_pages() 函数</strong>：<ul>
+<li>这是 NVIDIA GPU 驱动中的内部函数</li>
+<li>它的主要任务是为第三方 PCI 设备创建到 GPU 内存的 DMA 映射</li>
+<li>可能涉及 IOMMU 配置或特定 GPU 硬件功能的使用</li>
+<li>返回可供第三方设备使用的 DMA 地址</li>
+</ul>
+</li>
+<li><strong>DMA 映射管理</strong>：<ul>
+<li>通过 <code>nv_p2p_insert_dma_mapping()</code> 函数将 DMA 映射添加到内部列表</li>
+<li>这有助于跟踪所有活跃的 DMA 映射，便于后续清理</li>
+<li>当页表失效或被释放时，可以找到并清理所有相关的 DMA 映射</li>
+</ul>
+</li>
+<li><strong>sg_table 填充</strong>：<ul>
+<li>使用返回的 DMA 地址填充 sg_table（散列表）</li>
+<li>每个表项包含一个 DMA 地址和长度</li>
+<li>InfiniBand 设备使用这个 sg_table 进行 DMA 操作</li>
+</ul>
+</li>
+</ol>
+<h3 id="2-3-nv-get-p2p-free-callback-内存回收"><a href="#2-3-nv-get-p2p-free-callback-内存回收" class="headerlink" title="2.3 nv_get_p2p_free_callback 内存回收"></a>2.3 nv_get_p2p_free_callback 内存回收</h3><p>当 GPU 内存被释放或发生页错误时，需要通知 InfiniBand 子系统并清理资源。</p>
+<p><img src="/../figures/150BA689-1A52-4769-A692-D3FDF99BD66F.png" alt="150BA689-1A52-4769-A692-D3FDF99BD66F"></p>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">nv_get_p2p_free_callback</span><span class="params">(<span class="type">void</span> *data)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">int</span> ret = <span class="number">0</span>;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nv_mem_context</span> *<span class="title">nv_mem_context</span> =</span> (<span class="keyword">struct</span> nv_mem_context *)data;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nvidia_p2p_page_table</span> *<span class="title">page_table</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nvidia_p2p_dma_mapping</span> *<span class="title">dma_mapping</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 检查上下文有效性</span></span><br><span class="line">    <span class="keyword">if</span> (!NV_MEM_CONTEXT_CHECK_OK(nv_mem_context)) &#123;</span><br><span class="line">        peer_err(<span class="string">&quot;detected invalid context, skipping further processing\n&quot;</span>);</span><br><span class="line">        <span class="keyword">goto</span> out;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 保存页表和DMA映射的本地引用</span></span><br><span class="line">    page_table = nv_mem_context-&gt;page_table;</span><br><span class="line">    dma_mapping = nv_mem_context-&gt;dma_mapping;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 通知InfiniBand子系统</span></span><br><span class="line">    nv_mem_context-&gt;callback_task = current;</span><br><span class="line">    (*mem_invalidate_callback) (reg_handle, nv_mem_context-&gt;core_context);</span><br><span class="line">    nv_mem_context-&gt;callback_task = <span class="literal">NULL</span>;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放DMA映射</span></span><br><span class="line">    ret = nvidia_p2p_free_dma_mapping(dma_mapping);</span><br><span class="line">    <span class="keyword">if</span> (ret)</span><br><span class="line">        peer_err(<span class="string">&quot;error %d while calling nvidia_p2p_free_dma_mapping()\n&quot;</span>, ret);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放页表</span></span><br><span class="line">    ret = nvidia_p2p_free_page_table(page_table);</span><br><span class="line">    <span class="keyword">if</span> (ret)</span><br><span class="line">        peer_err(<span class="string">&quot;error %d while calling nvidia_p2p_free_page_table()\n&quot;</span>, ret);</span><br><span class="line">    </span><br><span class="line">out:</span><br><span class="line">    <span class="keyword">return</span>;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>**nvidia_p2p_free_dma_mapping() 和 nvidia_p2p_free_page_table()**：</p>
+<ul>
+<li>在 <code>nv-p2p.c</code> 中，这些函数是空操作（no-op），实际的清理工作由 <code>nv_p2p_free_dma_mapping()</code> 和 <code>nv_p2p_free_page_table()</code> 内部函数完成</li>
+<li>这些内部函数负责释放所有分配的资源并通知 GPU 驱动</li>
+</ul>
+<figure class="highlight c"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">nv_p2p_free_dma_mapping</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> nvidia_p2p_dma_mapping *dma_mapping)</span></span><br><span class="line">&#123;</span><br><span class="line">    <span class="type">nv_dma_device_t</span> peer_dma_dev = &#123;&#123; <span class="number">0</span> &#125;&#125;;</span><br><span class="line">    NvU32 page_size;</span><br><span class="line">    NV_STATUS status;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 设置DMA设备信息</span></span><br><span class="line">    peer_dma_dev.dev = &amp;dma_mapping-&gt;pci_dev-&gt;dev;</span><br><span class="line">    peer_dma_dev.addressable_range.limit = dma_mapping-&gt;pci_dev-&gt;dma_mask;</span><br><span class="line">    </span><br><span class="line">    page_size = nvidia_p2p_page_size_mappings[dma_mapping-&gt;page_size_type];</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 根据私有数据存在与否选择不同的清理方式</span></span><br><span class="line">    <span class="keyword">if</span> (dma_mapping-&gt;private != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        <span class="comment">// 处理页大小转换和调用nv_dma_unmap_alloc</span></span><br><span class="line">        <span class="comment">// ...</span></span><br><span class="line">    &#125; <span class="keyword">else</span> &#123;</span><br><span class="line">        <span class="comment">// 直接调用nv_dma_unmap_peer</span></span><br><span class="line">        NvU32 i;</span><br><span class="line">        <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; dma_mapping-&gt;entries; i++) &#123;</span><br><span class="line">            nv_dma_unmap_peer(&amp;peer_dma_dev, page_size / PAGE_SIZE,</span><br><span class="line">                            dma_mapping-&gt;dma_addresses[i]);</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放地址数组</span></span><br><span class="line">    os_free_mem(dma_mapping-&gt;dma_addresses);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放DMA映射结构</span></span><br><span class="line">    os_free_mem(dma_mapping);</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="type">static</span> <span class="type">void</span> <span class="title function_">nv_p2p_free_page_table</span><span class="params">(</span></span><br><span class="line"><span class="params">    <span class="keyword">struct</span> nvidia_p2p_page_table *page_table)</span></span><br><span class="line">&#123;</span><br><span class="line">    NvU32 i;</span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nvidia_p2p_dma_mapping</span> *<span class="title">dma_mapping</span>;</span></span><br><span class="line">    <span class="class"><span class="keyword">struct</span> <span class="title">nv_p2p_mem_info</span> *<span class="title">mem_info</span> =</span> <span class="literal">NULL</span>;</span><br><span class="line">    </span><br><span class="line">    mem_info = container_of(page_table, <span class="type">nv_p2p_mem_info_t</span>, page_table);</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 清理所有关联的DMA映射</span></span><br><span class="line">    dma_mapping = nv_p2p_remove_dma_mapping(mem_info, <span class="literal">NULL</span>);</span><br><span class="line">    <span class="keyword">while</span> (dma_mapping != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        nv_p2p_free_dma_mapping(dma_mapping);</span><br><span class="line">        dma_mapping = nv_p2p_remove_dma_mapping(mem_info, <span class="literal">NULL</span>);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放所有页结构</span></span><br><span class="line">    <span class="keyword">for</span> (i = <span class="number">0</span>; i &lt; page_table-&gt;entries; i++) &#123;</span><br><span class="line">        NV_KMEM_CACHE_FREE(page_table-&gt;pages[i], nvidia_p2p_page_t_cache);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放UUID</span></span><br><span class="line">    <span class="keyword">if</span> (page_table-&gt;gpu_uuid != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        os_free_mem(page_table-&gt;gpu_uuid);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放页数组</span></span><br><span class="line">    <span class="keyword">if</span> (page_table-&gt;pages != <span class="literal">NULL</span>) &#123;</span><br><span class="line">        os_free_mem(page_table-&gt;pages);</span><br><span class="line">    &#125;</span><br><span class="line">    </span><br><span class="line">    <span class="comment">// 释放内存信息结构</span></span><br><span class="line">    os_free_mem(mem_info);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+
+
+<h2 id="other"><a href="#other" class="headerlink" title="other"></a>other</h2><p>如 [4] 中所述</p>
+<blockquote>
+<p>简而言之，这套方案的核心思想是：</p>
+<ol>
+<li>建立一个注册机制：管理 P2P 可访问内存的设备驱动（如 GPU 驱动）可以通过 ib_core 提供的 ib_register_peer_memory_client API，将自身注册成为一个 Peer Memory Client。</li>
+<li>提供地址翻译回调: 这些 Peer Memory Client 的实现需要提供一组回调函数。其中一个关键的回调函数 get_pages, 使得 RDMA 驱动在需要访问对等内存（如 GPU 显存）时，能将传入的设备虚拟地址翻译成为该地址对应的、可供 RDMA 网卡 DMA 使用的物理地址列表。</li>
+</ol>
+<p>旨在 RDMA 框架内解决 P2P 内存注册的核心问题：地址翻译。这种设计直接解决了在 ibv_reg_mr 流程中处理非系统内存的痛点，对 RDMA 开发者来说是很友好的。</p>
+<p>然而，这套在 RDMA 子系统 ib_core 内部提供 Peer Memory Client API 的方案却最终未能合并到 Linux 内核主线，最主要的原因在于其缺乏通用性。P2P DMA 的需求并不仅限于 RDMA，图形（DRM）、视频（V4L2）、存储等其他子系统同样存在设备间直接内存共享的需求。将 P2P DMA 解决方案深度绑定在 ib_core 中不仅使得该机制难以被其他子系统复用，也被认为是在系统架构中放置在了错误的层次——P2P 内存管理更像是一个底层的驱动模型或内存管理问题，而非特定 I&#x2F;O 子系统的内部事务。</p>
+</blockquote>
+<h2 id="reference"><a href="#reference" class="headerlink" title="reference"></a>reference</h2><ol>
+<li><a target="_blank" rel="noopener" href="https://kernel.googlesource.com/pub/scm/linux/kernel/git/leon/linux-rdma/+/refs/heads/gpu-v6.4">RDMA&#x2F;core: Introduce peer memory interface</a></li>
+<li>nvidia peermem patch： <a target="_blank" rel="noopener" href="https://patentimages.storage.googleapis.com/25/a3/3f/28466fb18c472e/US10031857.pdf">https://patentimages.storage.googleapis.com/25/a3/3f/28466fb18c472e/US10031857.pdf</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.openfabrics.org/wp-content/uploads/2021-workshop-presentations/303_Xiong_DMA-BUF.pdf">PROGRESS OF UPSTREAM GPU RDMA SUPPORT</a></li>
+<li><a target="_blank" rel="noopener" href="https://segmentfault.com/a/1190000046437653">GPUDirect RDMA 的演进与实现</a></li>
+<li><a target="_blank" rel="noopener" href="https://enterprise-support.nvidia.com/s/article/howto-implement-peerdirect-client-using-mlnx-ofed">HowTo Implement PeerDirect Client using MLNX_OFED</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/NVIDIA/open-gpu-kernel-modules">open gpu kernel module repo</a></li>
+<li><a target="_blank" rel="noopener" href="https://github.com/Mellanox/nv_peer_memory">nv peer memory repo</a></li>
+</ol>
+
+  </div>
+</article>
+
+
+
+        
+          <div id="footer-post-container">
+  <div id="footer-post">
+
+    <div id="nav-footer" style="display: none">
+      <ul>
+        
+          <li><a href="/">Home</a></li>
+        
+          <li><a href="/about/">About</a></li>
+        
+          <li><a href="/archives/">Writing</a></li>
+        
+          <li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li>
+        
+      </ul>
+    </div>
+
+    
+    
+      <div id="toc-footer" style="display: none">
+        <ol class="toc"><li class="toc-item toc-level-2"><a class="toc-link" href="#0-%E6%B5%81%E7%A8%8B"><span class="toc-number">1.</span> <span class="toc-text">0. 流程</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#1-%E5%88%9D%E5%A7%8B%E5%8C%96"><span class="toc-number">2.</span> <span class="toc-text">1. 初始化</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#2-%E5%86%85%E5%AD%98%E6%B3%A8%E5%86%8C"><span class="toc-number">3.</span> <span class="toc-text">2. 内存注册</span></a><ol class="toc-child"><li class="toc-item toc-level-3"><a class="toc-link" href="#2-1-get-pages"><span class="toc-number">3.1.</span> <span class="toc-text">2.1 get pages</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-2-dma-map-pages"><span class="toc-number">3.2.</span> <span class="toc-text">2.2 dma map pages</span></a></li><li class="toc-item toc-level-3"><a class="toc-link" href="#2-3-nv-get-p2p-free-callback-%E5%86%85%E5%AD%98%E5%9B%9E%E6%94%B6"><span class="toc-number">3.3.</span> <span class="toc-text">2.3 nv_get_p2p_free_callback 内存回收</span></a></li></ol></li><li class="toc-item toc-level-2"><a class="toc-link" href="#other"><span class="toc-number">4.</span> <span class="toc-text">other</span></a></li><li class="toc-item toc-level-2"><a class="toc-link" href="#reference"><span class="toc-number">5.</span> <span class="toc-text">reference</span></a></li></ol>
+      </div>
+    
+
+    <div id="share-footer" style="display: none">
+      <ul>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.facebook.com/sharer.php?u=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/"><i class="fab fa-facebook fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://twitter.com/share?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&text=rdma 与 nvidia-peermem"><i class="fab fa-twitter fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.linkedin.com/shareArticle?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-linkedin fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://pinterest.com/pin/create/bookmarklet/?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&is_video=false&description=rdma 与 nvidia-peermem"><i class="fab fa-pinterest fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" href="mailto:?subject=rdma 与 nvidia-peermem&body=Check out this article: https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/"><i class="fa-solid fa-envelope fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://getpocket.com/save?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-get-pocket fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://reddit.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-reddit fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.stumbleupon.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-stumbleupon fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://digg.com/submit?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&title=rdma 与 nvidia-peermem"><i class="fab fa-digg fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="http://www.tumblr.com/share/link?url=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&name=rdma 与 nvidia-peermem&description="><i class="fab fa-tumblr fa-lg" aria-hidden="true"></i></a></li>
+  <li><a class="icon" target="_blank" rel="noopener" href="https://news.ycombinator.com/submitlink?u=https://middaywords.github.io/2025/07/10/2025-0710-nvidia-peermem/&t=rdma 与 nvidia-peermem"><i class="fab fa-hacker-news fa-lg" aria-hidden="true"></i></a></li>
+</ul>
+
+    </div>
+
+    <div id="actions-footer">
+        <a id="menu" class="icon" href="#" onclick="$('#nav-footer').toggle();return false;"><i class="fa-solid fa-bars fa-lg" aria-hidden="true"></i> Menu</a>
+        
+          <a id="toc" class="icon" href="#" onclick="$('#toc-footer').toggle();return false;"><i class="fa-solid fa-list fa-lg" aria-hidden="true"></i> TOC</a>
+        
+        <a id="share" class="icon" href="#" onclick="$('#share-footer').toggle();return false;"><i class="fa-solid fa-share-alt fa-lg" aria-hidden="true"></i> Share</a>
+        <a id="top" style="display:none" class="icon" href="#" onclick="$('html, body').animate({ scrollTop: 0 }, 'fast');"><i class="fa-solid fa-chevron-up fa-lg" aria-hidden="true"></i> Top</a>
+    </div>
+
+  </div>
+</div>
+
+        
+        <footer id="footer">
+  <div class="footer-left">
+    Copyright &copy;
+    
+    
+    2016-2025
+    Kangjie Xu
+  </div>
+  <div class="footer-right">
+    <nav>
+      <ul>
+        <!--
+       --><li><a href="/">Home</a></li><!--
+     --><!--
+       --><li><a href="/about/">About</a></li><!--
+     --><!--
+       --><li><a href="/archives/">Writing</a></li><!--
+     --><!--
+       --><li><a target="_blank" rel="noopener" href="http://github.com/middaywords">Projects</a></li><!--
+     -->
+      </ul>
+    </nav>
+  </div>
+</footer>
+
+    </div>
+    <!-- styles -->
+
+
+
+  <link rel="preload" as="style" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" crossorigin="anonymous" onload="this.onload=null;this.rel='stylesheet'"/>
+
+
+    <!-- jquery -->
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js" crossorigin="anonymous"></script>
+
+
+
+
+<!-- clipboard -->
+
+  
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/clipboard.js/2.0.7/clipboard.min.js" crossorigin="anonymous"></script>
+  
+  <script type="text/javascript">
+  $(function() {
+    // copy-btn HTML
+    var btn = "<span class=\"btn-copy tooltipped tooltipped-sw\" aria-label=\"Copy to clipboard!\">";
+    btn += '<i class="fa-regular fa-clone"></i>';
+    btn += '</span>';
+    // mount it!
+    $(".highlight table").before(btn);
+    var clip = new ClipboardJS('.btn-copy', {
+      text: function(trigger) {
+        return Array.from(trigger.nextElementSibling.querySelectorAll('.code')).reduce((str,it)=>str+it.innerText+'\n','')
+      }
+    });
+    clip.on('success', function(e) {
+      e.trigger.setAttribute('aria-label', "Copied!");
+      e.clearSelection();
+    })
+  })
+  </script>
+
+
+<script src="/js/main.js"></script>
+
+<!-- search -->
+
+<!-- Baidu Analytics -->
+
+<!-- Cloudflare Analytics -->
+
+<!-- Disqus Comments -->
+
+<!-- utterances Comments -->
+
+</body>
+</html>
